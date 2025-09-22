@@ -1,7 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fluttericon/iconic_icons.dart';
+import 'package:money_mind/database/DatabaseService.dart';
+import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/database/models/account.dart';
+import 'package:money_mind/database/models/statement.dart';
+import 'package:money_mind/modals/account_form.dart';
 
 class AccountWidget extends StatefulWidget {
   const AccountWidget({super.key});
@@ -11,38 +17,80 @@ class AccountWidget extends StatefulWidget {
 }
 
 class _AccountState extends State<AccountWidget> {
-  int itemCount = 10;
+  List<Account> accounts = [];
+  DatabaseService databaseService = DatabaseService.instance;
+
+  void _openAddAccountModal() async {
+    final result = await showModalBottomSheet(
+      isScrollControlled: true,
+      context: context,
+      builder: (BuildContext context) => const AccountForm(),
+    );
+    if (result == null || result is! Account) return;
+    setState(() {
+      accounts.add(result);
+    });
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          _list(),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: _actionBar(),
-          ),
-        ],
-      ),
+  void initState() {
+    super.initState();
+    databaseService.getAccounts().then(
+      (value) => {
+        setState(() {
+          print(value);
+          accounts = value;
+        }),
+      },
     );
   }
 
   Widget _list() {
-    if (itemCount == 0) {
+    if (accounts.isEmpty) {
       return Center(
-        child: Text("No accounts available.\nPlease add an account via bellow button."),
+        child: Text(
+          "No accounts available.\nPlease add an account via bellow button.",
+        ),
       );
     }
-    return ListView.builder(
-      itemCount: itemCount,
-      itemBuilder: ((context, index) {
-        return ListTile(
-          leading: Icon(Icons.account_balance_wallet),
-          title: Text("Account $index"),
-          subtitle: Text("Balance: \$${(index + 1) * 100}"),
-        );
-      }),
+    return SlidableAutoCloseBehavior(
+      child: ListView.builder(
+        itemCount: accounts.length,
+        itemBuilder: ((context, index) {
+          final Account account = accounts[index];
+          return Slidable(
+            groupTag: "0",
+            endActionPane: ActionPane(
+              motion: ScrollMotion(),
+              extentRatio: 0.25,
+              children: [
+                SlidableAction(
+                  onPressed: ((_) {
+                    setState(() {
+                      databaseService.deleteAccount(accounts[index]);
+                      accounts.removeAt(index);
+                    });
+                  }),
+                  backgroundColor: Colors.red,
+                  icon: Icons.delete,
+                  label: "Delete",
+                ),
+              ],
+            ),
+            child: ListTile(
+              leading: Icon(
+                account.type == AccountType.creditCard
+                    ? Icons.credit_card
+                    : Icons.wallet,
+              ),
+              title: Text(account.name),
+              subtitle: Text(
+                "Balance: ${account.totalBalance.toStringAsFixed(2)}€",
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 
@@ -68,10 +116,8 @@ class _AccountState extends State<AccountWidget> {
           Expanded(
             child: IconButton(
               onPressed: () {
-                setState(() {
-                  itemCount++;
-                });
                 print("Add account");
+                _openAddAccountModal();
               },
               icon: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -97,10 +143,20 @@ class _AccountState extends State<AccountWidget> {
           Expanded(
             child: IconButton(
               onPressed: () {
-                setState(() {
-                  itemCount = max(0, itemCount - 1);
-                });
                 print("Transfer");
+                Random rng = Random(0);
+                for (int i = 0; i < 10_000; i++) {
+                  Account account = accounts[0];
+                  Statement s = Statement(
+                      createdAt: DateTime.timestamp(),
+                      title: "Initial Balance",
+                      paymentDate: DateTime.timestamp(),
+                      useDate: DateTime.timestamp(),
+                      amount: rng.nextDouble(),
+                      isExpense: rng.nextBool(),
+                      tags: ["Auto-generated"]);
+                  databaseService.addStatement(s, account);
+                }
               },
               icon: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -114,6 +170,18 @@ class _AccountState extends State<AccountWidget> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          _list(),
+          Align(alignment: Alignment.bottomCenter, child: _actionBar()),
         ],
       ),
     );
