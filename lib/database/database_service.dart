@@ -1,7 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/AccountType.dart';
-import 'package:path/path.dart';
 
 class DatabaseService {
   // Singleton pattern
@@ -67,7 +66,7 @@ class DatabaseService {
     String notes,
   ) async {
     await database.transaction(() async {
-      final results = await database
+      await database
           .into(database.statements)
           .insert(
             StatementsCompanion(
@@ -81,12 +80,14 @@ class DatabaseService {
               note: Value(notes),
             ),
           )
-          .onError((error, stackTrace) {throw Exception(error);});
-      final Account account = await getAccountById(accountId);
+          .onError((error, stackTrace) {
+            throw Exception(error);
+          });
+      Account account = await getAccountById(accountId);
       final double newBalance = account.balance + amount;
-      database
-          .update(database.accounts)
-          .replace(account.copyWith(balance: newBalance));
+      await (database.update(database.accounts)
+            ..where((tbl) => tbl.id.equals(accountId)))
+          .write(AccountsCompanion(balance: Value(newBalance)));
     });
   }
 

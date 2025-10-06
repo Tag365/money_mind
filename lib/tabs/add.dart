@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:money_mind/database/database_service.dart';
 
 class AddWidget extends StatefulWidget {
   const AddWidget({super.key});
@@ -8,6 +11,21 @@ class AddWidget extends StatefulWidget {
 }
 
 class _AddWidgetState extends State<AddWidget> {
+  DatabaseService databaseService = DatabaseService.instance;
+
+  void addStatement() {
+    Random rng = Random(0);
+    databaseService.addStatement(
+      "Test transfer",
+      rng.nextDouble() * 10 * (rng.nextBool() ? 1 : -1),
+      2,
+      DateTime.timestamp(),
+      DateTime.timestamp(),
+      ["speedtest"],
+      "",
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -24,9 +42,7 @@ class _AddWidgetState extends State<AddWidget> {
                 ),
                 fixedSize: WidgetStateProperty.all<Size>(Size(5, 5)),
               ),
-              onPressed: () {
-                print("test");
-              },
+              onPressed: addStatement,
               child: Icon(Icons.add),
             ),
           ],
