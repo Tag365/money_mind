@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:money_mind/components/drag_indicator.dart';
-import 'package:money_mind/database/DatabaseService.dart';
+import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/AccountType.dart';
-import 'package:money_mind/database/models/account.dart';
-import 'package:money_mind/database/models/statement.dart';
 
 class AccountForm extends StatefulWidget {
   const AccountForm({super.key});
@@ -22,6 +20,28 @@ class _AccountFormState extends State<AccountForm> {
   DatabaseService databaseService = DatabaseService.instance;
   AccountType? accountType = AccountType.debit;
 
+  void _addAccount() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    int accountId = await databaseService.addAccount(
+      accountNameController.text,
+      accountType!,
+      double.parse(balanceController.text),
+    );
+
+    databaseService.addStatement(
+      "Initial Balance",
+      double.parse(balanceController.text),
+      accountId,
+      DateTime.timestamp(),
+      DateTime.timestamp(),
+      ["Auto-generated"],
+      "This statement was auto-generated when the account was created.",
+    );
+    Navigator.pop(context, accountId);
+  }
+
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
@@ -35,10 +55,9 @@ class _AccountFormState extends State<AccountForm> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery
-            .of(context)
-            .viewInsets
-            .bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: SizedBox(
           width: double.infinity,
           child: Column(
@@ -54,7 +73,9 @@ class _AccountFormState extends State<AccountForm> {
                     Text(
                       'Add account',
                       style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 20),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
                     ),
                     SizedBox(height: 20),
                     Form(
@@ -86,7 +107,8 @@ class _AccountFormState extends State<AccountForm> {
                             inputFormatters: <TextInputFormatter>[
                               FilteringTextInputFormatter.allow(
                                 RegExp(
-                                    r'([1-9]+\d*[.,]?\d{0,2})|(0[.,]?\d{0,2})'),
+                                  r'([1-9]+\d*[.,]?\d{0,2})|(0[.,]?\d{0,2})',
+                                ),
                               ),
                             ],
                             keyboardType: TextInputType.number,
@@ -117,36 +139,14 @@ class _AccountFormState extends State<AccountForm> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () {
-                                if (!_formKey.currentState!.validate()) {
-                                  return;
-                                }
-                                Account newAccount = Account(
-                                  name: accountNameController.text,
-                                  type: accountType!,
-                                );
-                                databaseService.addAccount(newAccount);
-
-                                Statement statement = Statement(
-                                    createdAt: DateTime.timestamp(),
-                                    title: "Initial Balance",
-                                    paymentDate: DateTime.timestamp(),
-                                    useDate: DateTime.timestamp(),
-                                    amount: double.parse(
-                                        balanceController.text),
-                                    isExpense: false,
-                                    tags: ["Auto-generated"]);
-                                newAccount.statements.add(statement);
-                                databaseService.addStatement(statement, newAccount);
-                                Navigator.pop(context, newAccount);
-                              },
+                              onPressed: _addAccount,
                               child: Text('Add account'),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(height: 50,)
+                    SizedBox(height: 50),
                   ],
                 ),
               ),

@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:fluttericon/iconic_icons.dart';
-import 'package:money_mind/database/DatabaseService.dart';
+import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/AccountType.dart';
-import 'package:money_mind/database/models/account.dart';
-import 'package:money_mind/database/models/statement.dart';
 import 'package:money_mind/modals/account_form.dart';
+
+import 'package:money_mind/database/app_database.dart';
 
 class AccountWidget extends StatefulWidget {
   const AccountWidget({super.key});
@@ -17,7 +17,6 @@ class AccountWidget extends StatefulWidget {
 }
 
 class _AccountState extends State<AccountWidget> {
-  List<Account> accounts = [];
   DatabaseService databaseService = DatabaseService.instance;
 
   void _openAddAccountModal() async {
@@ -27,25 +26,9 @@ class _AccountState extends State<AccountWidget> {
       builder: (BuildContext context) => const AccountForm(),
     );
     if (result == null || result is! Account) return;
-    setState(() {
-      accounts.add(result);
-    });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    databaseService.getAccounts().then(
-      (value) => {
-        setState(() {
-          print(value);
-          accounts = value;
-        }),
-      },
-    );
-  }
-
-  Widget _list() {
+  Widget _list(List<Account> accounts) {
     if (accounts.isEmpty) {
       return Center(
         child: Text(
@@ -85,7 +68,7 @@ class _AccountState extends State<AccountWidget> {
               ),
               title: Text(account.name),
               subtitle: Text(
-                "Balance: ${account.totalBalance.toStringAsFixed(2)}€",
+                "Balance: ${account.balance.toStringAsFixed(2)}€",
               ),
             ),
           );
@@ -94,7 +77,7 @@ class _AccountState extends State<AccountWidget> {
     );
   }
 
-  Widget _actionBar() {
+  Widget _actionBar(List<Account> accounts) {
     return Container(
       height: 60,
       width: MediaQuery.of(context).size.width * 0.8,
@@ -147,15 +130,15 @@ class _AccountState extends State<AccountWidget> {
                 Random rng = Random(0);
                 for (int i = 0; i < 10_000; i++) {
                   Account account = accounts[0];
-                  Statement s = Statement(
-                      createdAt: DateTime.timestamp(),
-                      title: "Initial Balance",
-                      paymentDate: DateTime.timestamp(),
-                      useDate: DateTime.timestamp(),
-                      amount: rng.nextDouble(),
-                      isExpense: rng.nextBool(),
-                      tags: ["Auto-generated"]);
-                  databaseService.addStatement(s, account);
+                  databaseService.addStatement(
+                    "Speedtest transfer $i",
+                    rng.nextDouble() * 10 * (rng.nextBool() ? 1 : -1),
+                    account.id,
+                    DateTime.timestamp(),
+                    DateTime.timestamp(),
+                    ["speedtest"],
+                    "",
+                  );
                 }
               },
               icon: Column(
@@ -178,11 +161,26 @@ class _AccountState extends State<AccountWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          _list(),
-          Align(alignment: Alignment.bottomCenter, child: _actionBar()),
-        ],
+      body: FutureBuilder(
+        future: databaseService.getAccounts(),
+        builder: (context, asyncSnapshot) {
+          if (!asyncSnapshot.hasData) {
+            // Show a placeholder while loading
+            return Center(child: CircularProgressIndicator());
+          }
+          if (asyncSnapshot.hasError) {
+            return Center(child: Text('Error: ${asyncSnapshot.error}'));
+          }
+          return Stack(
+            children: [
+              _list(asyncSnapshot.data!),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _actionBar(asyncSnapshot.data!),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
