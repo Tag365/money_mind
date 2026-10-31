@@ -5,6 +5,8 @@ import 'package:money_mind/components/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/list/grouping.dart';
+import 'package:money_mind/list/statement_filter.dart';
+import 'package:money_mind/modals/statement_filter_sheet.dart';
 
 class ListWidget extends StatefulWidget {
   const ListWidget({super.key});
@@ -16,8 +18,11 @@ class ListWidget extends StatefulWidget {
 class _ListState extends State<ListWidget> {
   DatabaseService databaseService = DatabaseService.instance;
 
-  // Created once so rebuilding the widget does not run the query again.
-  late final Stream<List<PeriodTotal>> _totals = databaseService.watchTotals(
+  StatementFilter _filter = const StatementFilter();
+
+  // Only replaced when the filter changes, so rebuilding the widget does not
+  // run the query again.
+  late Stream<List<PeriodTotal>> _totals = databaseService.watchTotals(
     yearly: false,
   );
 
@@ -40,11 +45,26 @@ class _ListState extends State<ListWidget> {
     super.dispose();
   }
 
+  void _openFilter() async {
+    final filter = await showModalBottomSheet<StatementFilter>(
+      isScrollControlled: true,
+      showDragHandle: true,
+      context: context,
+      builder: (context) => StatementFilterSheet(_filter, _accountNames),
+    );
+    if (filter == null) return;
+    setState(() {
+      _filter = filter;
+      _totals = databaseService.watchTotals(yearly: false, filter: filter);
+    });
+  }
+
   Widget _totalsList(List<PeriodTotal> totals) {
     final localizations = MaterialLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 16),
+      // Room for the filter button below the last row.
+      padding: const EdgeInsets.only(bottom: 88),
       itemCount: totals.length,
       itemBuilder: (context, index) {
         final PeriodTotal period = totals[index];
@@ -64,7 +84,15 @@ class _ListState extends State<ListWidget> {
           subtitle: Text("${period.count} statements"),
           trailing: MoneyText(period.total),
           // Collapsed children are disposed, so only open periods are queried.
-          children: [_PeriodStatements(period, _accountNames)],
+          children: [
+            _PeriodStatements(
+              period,
+              _accountNames,
+              _filter,
+              // A new filter needs a new query.
+              key: ValueKey(_filter),
+            ),
+          ],
         );
       },
     );
@@ -90,6 +118,14 @@ class _ListState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Filter',
+        onPressed: _openFilter,
+        child: Badge(
+          isLabelVisible: _filter.isActive,
+          child: const Icon(Icons.filter_list),
+        ),
+      ),
       body: StreamBuilder(
         stream: _totals,
         builder: (context, asyncSnapshot) =>
@@ -184,8 +220,14 @@ class _DayGroupView extends StatelessWidget {
 class _PeriodStatements extends StatefulWidget {
   final PeriodTotal period;
   final Map<int, String> accountNames;
+  final StatementFilter filter;
 
-  const _PeriodStatements(this.period, this.accountNames);
+  const _PeriodStatements(
+    this.period,
+    this.accountNames,
+    this.filter, {
+    super.key,
+  });
 
   @override
   State<_PeriodStatements> createState() => _PeriodStatementsState();
@@ -193,7 +235,11 @@ class _PeriodStatements extends StatefulWidget {
 
 class _PeriodStatementsState extends State<_PeriodStatements> {
   late final Stream<List<Statement>> _statements = DatabaseService.instance
-      .watchStatementsBetween(widget.period.start, widget.period.end);
+      .watchStatementsBetween(
+        widget.period.start,
+        widget.period.end,
+        filter: widget.filter,
+      );
 
   @override
   Widget build(BuildContext context) {

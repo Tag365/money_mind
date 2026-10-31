@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/list/statement_filter.dart';
 
 /// Sum of all statements in one month (or one year when [month] is null).
 class PeriodTotal {
@@ -170,13 +171,44 @@ class DatabaseService {
     });
   }
 
-  /// Statements with a payment date in [start, end), newest first.
-  Stream<List<Statement>> watchStatementsBetween(DateTime start, DateTime end) {
+  /// SQL condition for statements that pass [filter].
+  Expression<bool> _matches(StatementFilter filter) {
+    final tbl = database.statements;
+    // Escape LIKE wildcards so user input is matched literally.
+    String literal(String s) =>
+        s.replaceAllMapped(RegExp(r'[\\%_]'), (m) => '\\${m[0]}');
+    // Commas around the joined list make a tag match only whole entries.
+    final tagList = const Constant(',') + tbl.tags + const Constant(',');
+    final hasTag = Expression.or([
+      for (final tag in filter.tags)
+        tagList.like('%,${literal(tag)},%', escapeChar: '\\'),
+    ]);
+    final text = '%${literal(filter.text)}%';
+
+    return Expression.and([
+      if (filter.accounts.isNotEmpty) tbl.account.isIn(filter.accounts),
+      if (filter.tags.isNotEmpty) filter.excludeTags ? hasTag.not() : hasTag,
+      if (filter.expense && !filter.income) tbl.amount.isSmallerThanValue(0),
+      if (filter.income && !filter.expense) tbl.amount.isBiggerOrEqualValue(0),
+      if (filter.text.isNotEmpty)
+        tbl.title.like(text, escapeChar: '\\') |
+            tbl.note.like(text, escapeChar: '\\'),
+    ]);
+  }
+
+  /// Statements with a payment date in [start, end) that pass [filter],
+  /// newest first.
+  Stream<List<Statement>> watchStatementsBetween(
+    DateTime start,
+    DateTime end, {
+    StatementFilter filter = const StatementFilter(),
+  }) {
     return (database.select(database.statements)
           ..where(
             (tbl) =>
                 tbl.paymentDate.isBiggerOrEqualValue(start) &
-                tbl.paymentDate.isSmallerThanValue(end),
+                tbl.paymentDate.isSmallerThanValue(end) &
+                _matches(filter),
           )
           ..orderBy([
             (tbl) => OrderingTerm.desc(tbl.paymentDate),
@@ -185,9 +217,13 @@ class DatabaseService {
         .watch();
   }
 
-  /// Totals per month (or per year when [yearly] is true), newest first.
-  /// Aggregated by SQLite, so no statement rows are loaded into Dart.
-  Stream<List<PeriodTotal>> watchTotals({required bool yearly}) {
+  /// Totals per month (or per year when [yearly] is true) of the statements
+  /// that pass [filter], newest first. Aggregated by SQLite, so no statement
+  /// rows are loaded into Dart.
+  Stream<List<PeriodTotal>> watchTotals({
+    required bool yearly,
+    StatementFilter filter = const StatementFilter(),
+  }) {
     final tbl = database.statements;
     // Group by local time, otherwise late-evening statements on the last day
     // of a month would count towards the next month.
@@ -200,6 +236,7 @@ class DatabaseService {
     final groupColumns = yearly ? [year] : [year, month];
     final query = database.selectOnly(tbl)
       ..addColumns([...groupColumns, total, count])
+      ..where(_matches(filter))
       ..groupBy(groupColumns)
       ..orderBy([for (final c in groupColumns) OrderingTerm.desc(c)]);
 
