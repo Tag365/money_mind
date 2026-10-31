@@ -17,9 +17,9 @@ class DayGroupView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          // Same insets as ListTile, so the day total lines up with the
-          // amounts below.
-          padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 24, 0),
+          // The inner card's margin plus ListTile's insets, so the day total
+          // lines up with the amounts below.
+          padding: const EdgeInsetsDirectional.fromSTEB(24, 12, 32, 6),
           child: Row(
             children: [
               Expanded(
@@ -32,7 +32,17 @@ class DayGroupView extends StatelessWidget {
             ],
           ),
         ),
-        for (final s in group.statements) StatementTile(s, accountNames),
+        // Lighter than the month card, so each day stands out as a group.
+        Card(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (final s in group.statements) StatementTile(s, accountNames),
+            ],
+          ),
+        ),
       ],
     );
   }

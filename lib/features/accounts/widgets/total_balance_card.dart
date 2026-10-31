@@ -17,18 +17,19 @@ class TotalBalanceCard extends StatelessWidget {
       color: colors.primaryContainer,
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // ListTile's insets, so the total lines up with the balances below.
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 24, 16),
+        child: Row(
           children: [
-            Text(
-              "Total balance",
-              style: text.labelLarge?.copyWith(
-                color: colors.onPrimaryContainer,
+            Expanded(
+              child: Text(
+                "Total balance",
+                style: text.titleMedium?.copyWith(
+                  color: colors.onPrimaryContainer,
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            MoneyText(total, style: text.headlineMedium),
+            MoneyText(total, style: text.titleLarge),
           ],
         ),
       ),
