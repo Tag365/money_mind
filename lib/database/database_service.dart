@@ -184,6 +184,24 @@ class DatabaseService {
     });
   }
 
+  /// Deletes [statement] and takes its amount back out of the account balance.
+  Future<void> deleteStatement(Statement statement) async {
+    await database.transaction(() async {
+      final deleted = await (database.delete(
+        database.statements,
+      )..where((tbl) => tbl.id.equals(statement.id))).go();
+      // Already gone (e.g. tapped twice): the balance was adjusted back then.
+      if (deleted == 0) return;
+      await (database.update(
+        database.accounts,
+      )..where((tbl) => tbl.id.equals(statement.account))).write(
+        AccountsCompanion.custom(
+          balance: database.accounts.balance - Variable(statement.amount),
+        ),
+      );
+    });
+  }
+
   /// SQL condition for statements that pass [filter].
   Expression<bool> _matches(StatementFilter filter) {
     final tbl = database.statements;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:money_mind/amount_expression.dart';
+import 'package:money_mind/components/tag_label.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/screens/manage_tags.dart';
@@ -230,23 +231,8 @@ class _AddWidgetState extends State<AddWidget> {
   }
 
   /// Tag name on its color, full width in the dialog and compact in the field.
-  Widget _tagLabel(Tag tag, {bool expand = false}) {
-    final color = Color(tag.color);
-    // Dark text on light colors (yellow, cyan), white text otherwise.
-    final textColor =
-        ThemeData.estimateBrightnessForColor(color) == Brightness.light
-        ? Colors.black
-        : Colors.white;
-    return Container(
-      width: expand ? double.infinity : null,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(tag.name, style: TextStyle(color: textColor)),
-    );
-  }
+  Widget _tagLabel(Tag tag, {bool expand = false}) =>
+      TagLabel(tag.name, Color(tag.color), expand: expand);
 
   @override
   Widget build(BuildContext context) {
