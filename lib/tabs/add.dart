@@ -45,6 +45,23 @@ class _AddWidgetState extends State<AddWidget> {
     });
   }
 
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(date),
+    );
+    if (picked == null) return;
+    setState(() {
+      date = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        picked.hour,
+        picked.minute,
+      );
+    });
+  }
+
   void _clear() {
     titleController.clear();
     amountController.clear();
@@ -96,15 +113,15 @@ class _AddWidgetState extends State<AddWidget> {
         if (!accounts.any((a) => a.id == accountId)) {
           accountId = accounts.first.id;
         }
-        return DropdownMenu<int>(
-          expandedInsets: EdgeInsets.zero,
-          label: const Text('Account'),
-          initialSelection: accountId,
-          dropdownMenuEntries: [
+        return DropdownButton<int>(
+          value: accountId,
+          isExpanded: true,
+          underline: const SizedBox.shrink(),
+          items: [
             for (final a in accounts)
-              DropdownMenuEntry(value: a.id, label: a.name),
+              DropdownMenuItem(value: a.id, child: Text(a.name)),
           ],
-          onSelected: (id) => setState(() => accountId = id),
+          onChanged: (id) => setState(() => accountId = id),
         );
       },
     );
@@ -233,22 +250,33 @@ class _AddWidgetState extends State<AddWidget> {
               spacing: 20,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                OutlinedButton.icon(
-                  onPressed: _pickDate,
-                  icon: const Icon(Icons.calendar_today),
-                  label: Text(
-                    MaterialLocalizations.of(context).formatMediumDate(date),
-                  ),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: _pickDate,
+                      child: Text(date.toIso8601String().substring(0, 10)),
+                    ),
+                    TextButton(
+                      onPressed: _pickTime,
+                      child: Text(
+                        MaterialLocalizations.of(context).formatTimeOfDay(
+                          TimeOfDay.fromDateTime(date),
+                          alwaysUse24HourFormat: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: _accountField()),
+                  ],
                 ),
-                _accountField(),
                 TextFormField(
                   controller: titleController,
                   decoration: const InputDecoration(
-                    labelText: 'Description',
+                    labelText: 'Title',
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) => value == null || value.isEmpty
-                      ? 'Please enter a description'
+                      ? 'Please add a Title'
                       : null,
                 ),
                 _tagsField(),
@@ -277,14 +305,19 @@ class _AddWidgetState extends State<AddWidget> {
                         },
                       ),
                     ),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: true, label: Text('Expense')),
-                        ButtonSegment(value: false, label: Text('Income')),
-                      ],
-                      selected: {expense},
-                      onSelectionChanged: (s) =>
-                          setState(() => expense = s.first),
+                    FilledButton.tonal(
+                      style: FilledButton.styleFrom(
+                        // Same width for both labels, so the amount field
+                        // does not resize when toggling.
+                        minimumSize: const Size(110, 48),
+                        backgroundColor: Colors.grey.shade200,
+                        // Same colors as MoneyText.
+                        foregroundColor: expense
+                            ? Colors.red.shade400
+                            : Colors.green.shade600,
+                      ),
+                      onPressed: () => setState(() => expense = !expense),
+                      child: Text(expense ? 'Expense' : 'Income'),
                     ),
                   ],
                 ),
