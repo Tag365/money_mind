@@ -8,7 +8,6 @@ import 'package:money_mind/features/accounts/account_form.dart';
 import 'package:money_mind/features/accounts/transfer_form.dart';
 import 'package:money_mind/features/accounts/widgets/account_tile.dart';
 import 'package:money_mind/features/accounts/widgets/no_accounts_hint.dart';
-import 'package:money_mind/features/accounts/widgets/total_balance_card.dart';
 
 import 'package:money_mind/database/app_database.dart';
 
@@ -122,7 +121,6 @@ class _AccountState extends State<AccountWidget> {
     return SlidableAutoCloseBehavior(
       child: ListView(
         children: [
-          TotalBalanceCard(accounts),
           for (final account in accounts)
             AccountTile(account, onClose: () => _closeAccount(account)),
         ],

@@ -3,6 +3,7 @@ import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/statements/add_statement.dart';
 import 'package:money_mind/features/statements/statement_list.dart';
 import 'package:money_mind/features/accounts/accounts_tab.dart';
+import 'package:money_mind/features/home/home_tab.dart';
 
 class TabNavigation extends StatefulWidget {
   const TabNavigation({super.key});
@@ -12,7 +13,7 @@ class TabNavigation extends StatefulWidget {
 }
 
 class _TabNavigationState extends State<TabNavigation> {
-  int _index = 1;
+  int _index = 0;
 
   // Recurring statements fall due while the app is closed or in background.
   late final AppLifecycleListener _lifecycle;
@@ -39,12 +40,22 @@ class _TabNavigationState extends State<TabNavigation> {
       // IndexedStack keeps each tab (and its scroll position) alive.
       body: IndexedStack(
         index: _index,
-        children: const [AddWidget(), ListWidget(), AccountWidget()],
+        children: const [
+          HomeWidget(),
+          AddWidget(),
+          ListWidget(),
+          AccountWidget(),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (index) => setState(() => _index = index),
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: "Home",
+          ),
           NavigationDestination(
             icon: Icon(Icons.add_circle_outline),
             selectedIcon: Icon(Icons.add_circle),

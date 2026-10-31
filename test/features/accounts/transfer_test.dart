@@ -24,6 +24,10 @@ void main() {
 
     expect((await service.getAccountById(income)).balance, 700);
     expect((await service.getAccountById(savings)).balance, 300);
+    final month =
+        (await service.watchTotals(yearly: false, transfers: false).first)
+            .single;
+    expect((month.income, month.expense, month.count), (1000, 0, 1));
     final transfers = (await db.select(db.statements).get()).skip(1);
     expect(transfers.map((s) => s.title), [
       'Transfer to Savings',
