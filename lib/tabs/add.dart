@@ -340,12 +340,6 @@ class _AddWidgetState extends State<AddWidget> {
                           filled: false,
                           border: InputBorder.none,
                           prefixIcon: Icon(Icons.euro_sharp, color: color),
-                          suffixIcon: IconButton(
-                            tooltip: 'Add another charge',
-                            icon: const Icon(Icons.add),
-                            onPressed: () =>
-                                setState(() => amountController.text += ' + '),
-                          ),
                         ),
                         // signed: shows a minus key on the number keyboard.
                         keyboardType: const TextInputType.numberWithOptions(
