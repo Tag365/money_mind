@@ -1078,7 +1078,7 @@ final class $$AccountsTableReferences
   static MultiTypedResultKey<$StatementsTable, List<Statement>>
   _statementsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.statements,
-    aliasName: $_aliasNameGenerator(db.accounts.id, db.statements.account),
+    aliasName: 'accounts__id__statements__account',
   );
 
   $$StatementsTableProcessedTableManager get statementsRefs {
@@ -1280,7 +1280,7 @@ class $$AccountsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$AccountsTable, Account>(table),
                   $$AccountsTableReferences(db, table, e),
                 ),
               )
@@ -1293,10 +1293,11 @@ class $$AccountsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (statementsRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       Account,
                       $AccountsTable,
-                      Statement
+                      Statement,
+                      $StatementsTable
                     >(
                       currentTable: table,
                       referencedTable: $$AccountsTableReferences
@@ -1306,8 +1307,8 @@ class $$AccountsTableTableManager
                         table,
                         p0,
                       ).statementsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.account == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'account',
                       typedResults: items,
                     ),
                 ];
@@ -1361,8 +1362,8 @@ final class $$StatementsTableReferences
     extends BaseReferences<_$AppDatabase, $StatementsTable, Statement> {
   $$StatementsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $AccountsTable _accountTable(_$AppDatabase db) => db.accounts
-      .createAlias($_aliasNameGenerator(db.statements.account, db.accounts.id));
+  static $AccountsTable _accountTable(_$AppDatabase db) =>
+      db.accounts.createAlias('statements__account__accounts__id');
 
   $$AccountsTableProcessedTableManager get account {
     final $_column = $_itemColumn<int>('account')!;
@@ -1658,7 +1659,7 @@ class $$StatementsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$StatementsTable, Statement>(table),
                   $$StatementsTableReferences(db, table, e),
                 ),
               )
@@ -1818,7 +1819,12 @@ class $$TagsTableTableManager
                 required String name,
               }) => TagsCompanion.insert(id: id, name: name),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$TagsTable, Tag>(table),
+                  BaseReferences<_$AppDatabase, $TagsTable, Tag>(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

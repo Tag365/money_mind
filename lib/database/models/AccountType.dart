@@ -1,9 +1,7 @@
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:json_annotation/json_annotation.dart';
 
-@JsonEnum()
 enum AccountType {
   debit("Debit"),
   creditCard("Credit card");

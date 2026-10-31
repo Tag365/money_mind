@@ -1,8 +1,9 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:fluttericon/iconic_icons.dart';
+import 'package:money_mind/components/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 import 'package:money_mind/modals/account_form.dart';
@@ -22,53 +23,124 @@ class _AccountState extends State<AccountWidget> {
   void _openAddAccountModal() async {
     final result = await showModalBottomSheet(
       isScrollControlled: true,
+      showDragHandle: true,
       context: context,
       builder: (BuildContext context) => const AccountForm(),
     );
     if (result == null || result is! Account) return;
   }
 
+  // Created once so rebuilds don't re-run the query; updates automatically
+  // when accounts or balances change.
+  late final Stream<List<Account>> _accounts = databaseService.watchAccounts();
+
+  /// Inserts 10 years of fake statements (~10 per day) in one batch.
+  Future<void> _insertSpeedtestStatements(Account account) async {
+    final Random rng = Random(0);
+    final DateTime now = DateTime.now();
+    final Stopwatch stopwatch = Stopwatch()..start();
+    await databaseService.addStatements([
+      for (int i = 0; i < 36_500; i++)
+        StatementsCompanion.insert(
+          title: "Speedtest transfer $i",
+          createdAt: now,
+          paymentDate: now.subtract(Duration(minutes: i * 144)),
+          account: account.id,
+          useDate: now.subtract(Duration(minutes: i * 144)),
+          amount: rng.nextDouble() * 10 * (rng.nextBool() ? 1 : -1),
+          tags: ["speedtest"],
+          note: "",
+        ),
+    ]);
+    print("Inserted 36500 statements in ${stopwatch.elapsedMilliseconds} ms");
+  }
+
+  Widget _totalCard(List<Account> accounts) {
+    final double total = accounts.fold(0, (sum, a) => sum + a.balance);
+    final colors = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Card(
+      color: colors.primaryContainer,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Total balance",
+              style: text.labelLarge?.copyWith(
+                color: colors.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: 4),
+            MoneyText(total, style: text.headlineMedium),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _list(List<Account> accounts) {
     if (accounts.isEmpty) {
       return Center(
-        child: Text(
-          "No accounts available.\nPlease add an account via bellow button.",
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 12),
+            const Text("No accounts yet"),
+            const SizedBox(height: 4),
+            const Text("Tap \"Add account\" to create your first one."),
+          ],
         ),
       );
     }
+    final colors = Theme.of(context).colorScheme;
     return SlidableAutoCloseBehavior(
       child: ListView.builder(
-        itemCount: accounts.length,
+        // Leave room so the last card isn't hidden behind the buttons.
+        padding: const EdgeInsets.only(bottom: 140),
+        itemCount: accounts.length + 1,
         itemBuilder: ((context, index) {
-          final Account account = accounts[index];
-          return Slidable(
-            groupTag: "0",
-            endActionPane: ActionPane(
-              motion: ScrollMotion(),
-              extentRatio: 0.25,
-              children: [
-                SlidableAction(
-                  onPressed: ((_) {
-                    setState(() {
-                      databaseService.deleteAccount(accounts[index]);
-                      accounts.removeAt(index);
-                    });
-                  }),
-                  backgroundColor: Colors.red,
-                  icon: Icons.delete,
-                  label: "Delete",
-                ),
-              ],
-            ),
-            child: ListTile(
-              leading: Icon(
-                account.type == AccountType.creditCard
-                    ? Icons.credit_card
-                    : Icons.wallet,
+          if (index == 0) return _totalCard(accounts);
+          final Account account = accounts[index - 1];
+          return Card(
+            clipBehavior: Clip.antiAlias,
+            child: Slidable(
+              groupTag: "0",
+              endActionPane: ActionPane(
+                motion: ScrollMotion(),
+                extentRatio: 0.25,
+                children: [
+                  SlidableAction(
+                    onPressed: ((_) {
+                      databaseService.deleteAccount(account);
+                    }),
+                    backgroundColor: colors.error,
+                    foregroundColor: colors.onError,
+                    icon: Icons.delete_outline,
+                    label: "Delete",
+                  ),
+                ],
               ),
-              title: Text(account.name),
-              subtitle: Text(
-                "Balance: ${account.balance.toStringAsFixed(2)}€",
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: colors.secondaryContainer,
+                  foregroundColor: colors.onSecondaryContainer,
+                  child: Icon(
+                    account.type == AccountType.creditCard
+                        ? Icons.credit_card
+                        : Icons.account_balance_wallet_outlined,
+                  ),
+                ),
+                title: Text(account.name),
+                subtitle: Text(account.type.displayName),
+                trailing: MoneyText(account.balance),
               ),
             ),
           );
@@ -77,111 +149,47 @@ class _AccountState extends State<AccountWidget> {
     );
   }
 
-  Widget _actionBar(List<Account> accounts) {
-    return Container(
-      height: 60,
-      width: MediaQuery.of(context).size.width * 0.8,
-      decoration: BoxDecoration(
-        color: Colors.blueGrey,
-        borderRadius: BorderRadius.all(Radius.circular(30)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            blurStyle: BlurStyle.outer,
+  Widget _actions(List<Account> accounts) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      spacing: 12,
+      children: [
+        // Dev tool: only offered when there is an account to fill.
+        if (kDebugMode && accounts.isNotEmpty)
+          FloatingActionButton.small(
+            heroTag: "speedtest",
+            tooltip: "Insert speedtest statements",
+            onPressed: () => _insertSpeedtestStatements(accounts.first),
+            child: const Icon(Icons.speed),
           ),
-        ],
-      ),
-      margin: EdgeInsets.only(bottom: 30, left: 20, right: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(
-            child: IconButton(
-              onPressed: () {
-                print("Add account");
-                _openAddAccountModal();
-              },
-              icon: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add, color: Colors.white),
-                  Text(
-                    "Add",
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          VerticalDivider(
-            color: Colors.white,
-            thickness: 2,
-            indent: 3,
-            endIndent: 3,
-            radius: BorderRadiusGeometry.all(Radius.circular(20)),
-          ),
-
-          Expanded(
-            child: IconButton(
-              onPressed: () {
-                print("Transfer");
-                Random rng = Random(0);
-                for (int i = 0; i < 10_000; i++) {
-                  Account account = accounts[0];
-                  databaseService.addStatement(
-                    "Speedtest transfer $i",
-                    rng.nextDouble() * 10 * (rng.nextBool() ? 1 : -1),
-                    account.id,
-                    DateTime.timestamp(),
-                    DateTime.timestamp(),
-                    ["speedtest"],
-                    "",
-                  );
-                }
-              },
-              icon: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Iconic.exchange, color: Colors.white),
-                  Text(
-                    "Transfer",
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        FloatingActionButton.extended(
+          heroTag: "add",
+          onPressed: _openAddAccountModal,
+          icon: const Icon(Icons.add),
+          label: const Text("Add account"),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: FutureBuilder(
-        future: databaseService.getAccounts(),
-        builder: (context, asyncSnapshot) {
-          if (!asyncSnapshot.hasData) {
-            // Show a placeholder while loading
-            return Center(child: CircularProgressIndicator());
-          }
-          if (asyncSnapshot.hasError) {
-            return Center(child: Text('Error: ${asyncSnapshot.error}'));
-          }
-          return Stack(
-            children: [
-              _list(asyncSnapshot.data!),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: _actionBar(asyncSnapshot.data!),
-              ),
-            ],
-          );
-        },
-      ),
+    return StreamBuilder(
+      stream: _accounts,
+      builder: (context, asyncSnapshot) {
+        if (asyncSnapshot.hasError) {
+          return Center(child: Text('Error: ${asyncSnapshot.error}'));
+        }
+        if (!asyncSnapshot.hasData) {
+          // Show a placeholder while loading
+          return Center(child: CircularProgressIndicator());
+        }
+        return Scaffold(
+          body: _list(asyncSnapshot.data!),
+          floatingActionButton: _actions(asyncSnapshot.data!),
+        );
+      },
     );
   }
 }

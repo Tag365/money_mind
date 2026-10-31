@@ -18,7 +18,7 @@ class _AddWidgetState extends State<AddWidget> {
     databaseService.addStatement(
       "Test transfer",
       rng.nextDouble() * 10 * (rng.nextBool() ? 1 : -1),
-      2,
+      1,
       DateTime.timestamp(),
       DateTime.timestamp(),
       ["speedtest"],
@@ -30,22 +30,10 @@ class _AddWidgetState extends State<AddWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Add Tab"),
-
-            TextButton(
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all<Color>(
-                  Colors.blueAccent,
-                ),
-                fixedSize: WidgetStateProperty.all<Size>(Size(5, 5)),
-              ),
-              onPressed: addStatement,
-              child: Icon(Icons.add),
-            ),
-          ],
+        child: FilledButton.icon(
+          onPressed: addStatement,
+          icon: Icon(Icons.add),
+          label: Text("Add test statement"),
         ),
       ),
     );
