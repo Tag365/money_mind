@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v7
 
@@ -36,7 +39,32 @@ jobs:
           flutter pub get
 
       - name: Test
-        run: flutter test
+        run: flutter test --coverage
+
+      # Line coverage per file from lcov.info, without generated *.g.dart files.
+      - name: Coverage report
+        run: |
+          awk -F: '
+            /^SF:/ { f = $2 }
+            /^LF:/ { n = $2 }
+            /^LH:/ { h = $2 }
+            /^end_of_record/ && f !~ /\.g\.dart$/ {
+              rows = rows sprintf("| %s | %d / %d | %.1f%% |\n", f, h, n, n ? 100 * h / n : 100)
+              H += h; N += n
+            }
+            END {
+              printf "### Coverage: %.1f%% (%d / %d lines)\n\n", N ? 100 * H / N : 100, H, N
+              printf "<details><summary>Per file</summary>\n\n| File | Lines | Coverage |\n|---|---|---|\n%s\n</details>\n", rows
+            }' coverage/lcov.info > coverage/summary.md
+          cat coverage/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment coverage on PR
+        # Fork PRs get a read-only token, so they can't comment.
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: coverage
+          path: coverage/summary.md
 
       - name: Build APK
         run: |
