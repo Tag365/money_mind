@@ -11,6 +11,11 @@ class PeriodTotal {
   final int count;
 
   const PeriodTotal(this.year, this.month, this.total, this.count);
+
+  /// Local-time bounds of the period, end exclusive.
+  DateTime get start => DateTime(year, month ?? 1);
+  DateTime get end =>
+      month == null ? DateTime(year + 1) : DateTime(year, month! + 1);
 }
 
 class DatabaseService {
@@ -165,15 +170,18 @@ class DatabaseService {
     });
   }
 
-  /// Newest statements first, at most [limit] rows. Emits again whenever the
-  /// statements table changes.
-  Stream<List<Statement>> watchStatements({required int limit}) {
+  /// Statements with a payment date in [start, end), newest first.
+  Stream<List<Statement>> watchStatementsBetween(DateTime start, DateTime end) {
     return (database.select(database.statements)
+          ..where(
+            (tbl) =>
+                tbl.paymentDate.isBiggerOrEqualValue(start) &
+                tbl.paymentDate.isSmallerThanValue(end),
+          )
           ..orderBy([
             (tbl) => OrderingTerm.desc(tbl.paymentDate),
             (tbl) => OrderingTerm.desc(tbl.id),
-          ])
-          ..limit(limit))
+          ]))
         .watch();
   }
 

@@ -30,7 +30,7 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
   - `Accounts.balance` is denormalized. Insert statements via `addStatement`/`addStatements`, which update balances in the same transaction with an SQL-side increment. Any future update or delete path for statements must adjust balances too.
   - `Statements.tags` is a comma-joined string via `ListConverter`, so tags must not contain commas.
   - Monthly/yearly totals (`watchTotals`) are aggregated in SQLite and grouped by local time, not UTC.
-- **Statements list** pages by growing the `limit` on `watchStatements` (newest first) rather than offset paging.
+- **Statements list** is an accordion of months (`watchTotals`); an expanded month loads its statements via `watchStatementsBetween` and shows them grouped by day (`groupByDay`).
 
 ## CI
 
