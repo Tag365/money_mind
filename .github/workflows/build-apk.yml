@@ -1,0 +1,37 @@
+name: Build APK
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.9
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          flutter build apk --release
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: money_mind-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
