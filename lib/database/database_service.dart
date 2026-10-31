@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 
@@ -30,18 +31,13 @@ class DatabaseService {
     return _database!;
   }
 
-  Future<int> addAccount(
-    String name,
-    AccountType type,
-  ) async {
+  @visibleForTesting
+  set database(AppDatabase db) => _database = db;
+
+  Future<int> addAccount(String name, AccountType type) async {
     return await database
         .into(database.accounts)
-        .insert(
-          AccountsCompanion(
-            name: Value(name),
-            type: Value(type),
-          ),
-        );
+        .insert(AccountsCompanion(name: Value(name), type: Value(type)));
   }
 
   Future<void> deleteAccount(Account account) async {
@@ -60,6 +56,56 @@ class DatabaseService {
     return await (database.select(
       database.accounts,
     )..where((tbl) => tbl.id.equals(id))).getSingle();
+  }
+
+  Stream<List<Tag>> watchTags() {
+    return (database.select(
+      database.tags,
+    )..orderBy([(tbl) => OrderingTerm.asc(tbl.name)])).watch();
+  }
+
+  Future<void> addTag(String name, int color) async {
+    await database
+        .into(database.tags)
+        .insert(TagsCompanion(name: Value(name), color: Value(color)));
+  }
+
+  /// Renaming also renames the tag on every statement that uses it.
+  Future<void> updateTag(Tag tag, String name, int color) async {
+    await database.transaction(() async {
+      await (database.update(database.tags)
+            ..where((tbl) => tbl.id.equals(tag.id)))
+          .write(TagsCompanion(name: Value(name), color: Value(color)));
+      if (name != tag.name) await _replaceTagInStatements(tag.name, name);
+    });
+  }
+
+  /// Also removes the tag from every statement that uses it.
+  Future<void> deleteTag(Tag tag) async {
+    await database.transaction(() async {
+      await (database.delete(
+        database.tags,
+      )..where((tbl) => tbl.id.equals(tag.id))).go();
+      await _replaceTagInStatements(tag.name, null);
+    });
+  }
+
+  /// Replaces [oldName] with [newName] in the tags of all statements, or
+  /// removes it when [newName] is null.
+  Future<void> _replaceTagInStatements(String oldName, String? newName) async {
+    // LIKE narrows the rows; the exact match happens on the parsed list.
+    final candidates = await (database.select(
+      database.statements,
+    )..where((tbl) => tbl.tags.like('%$oldName%'))).get();
+    for (final statement in candidates) {
+      if (!statement.tags.contains(oldName)) continue;
+      final tags = {
+        for (final t in statement.tags) t == oldName ? newName : t,
+      }.nonNulls.toList();
+      await (database.update(database.statements)
+            ..where((tbl) => tbl.id.equals(statement.id)))
+          .write(StatementsCompanion(tags: Value(tags)));
+    }
   }
 
   Future<List<Statement>> getStatementsForAccount(Account account) async {
@@ -108,13 +154,13 @@ class DatabaseService {
       for (final MapEntry(key: accountId, value: change)
           in balanceChanges.entries) {
         // Let SQLite add to the current value instead of read-modify-write.
-        await (database.update(database.accounts)
-              ..where((tbl) => tbl.id.equals(accountId)))
-            .write(
-              AccountsCompanion.custom(
-                balance: database.accounts.balance + Variable(change),
-              ),
-            );
+        await (database.update(
+          database.accounts,
+        )..where((tbl) => tbl.id.equals(accountId))).write(
+          AccountsCompanion.custom(
+            balance: database.accounts.balance + Variable(change),
+          ),
+        );
       }
     });
   }

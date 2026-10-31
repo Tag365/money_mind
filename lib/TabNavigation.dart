@@ -11,7 +11,11 @@ class TabNavigation extends StatefulWidget {
 }
 
 class _TabNavigationState extends State<TabNavigation> {
-  static const List<String> _titles = ["Add", "Statements", "Accounts"];
+  static const List<String> _titles = [
+    "Statement Form",
+    "Statements",
+    "Accounts",
+  ];
 
   int _index = 1;
 
@@ -31,7 +35,7 @@ class _TabNavigationState extends State<TabNavigation> {
           NavigationDestination(
             icon: Icon(Icons.add_circle_outline),
             selectedIcon: Icon(Icons.add_circle),
-            label: "Add",
+            label: "Create",
           ),
           NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),

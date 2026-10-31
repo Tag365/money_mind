@@ -102,9 +102,7 @@ class _AccountFormState extends State<AccountForm> {
                             ),
                             inputFormatters: <TextInputFormatter>[
                               FilteringTextInputFormatter.allow(
-                                RegExp(
-                                  r'([1-9]\d*\.?\d{0,2})|(0\.?\d{0,2})',
-                                ),
+                                RegExp(r'([1-9]\d*\.?\d{0,2})|(0\.?\d{0,2})'),
                               ),
                             ],
                             keyboardType: TextInputType.number,

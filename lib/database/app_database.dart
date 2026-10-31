@@ -12,10 +12,11 @@ part 'app_database.g.dart';
 
 @DriftDatabase(tables: [Statements, Accounts, Tags])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  // Tests pass NativeDatabase.memory().
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -25,6 +26,7 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) await _createIndexes();
+      if (from < 3) await m.addColumn(tags, tags.color);
     },
   );
 

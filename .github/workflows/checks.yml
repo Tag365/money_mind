@@ -1,0 +1,26 @@
+name: Static checks
+
+on:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.9
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      # Infos are pre-existing lints (file names, print); warnings and errors fail.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos

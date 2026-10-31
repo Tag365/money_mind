@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 
-
 class ListConverter<T> extends TypeConverter<List<T>, String> {
   const ListConverter();
 
@@ -16,5 +15,4 @@ class ListConverter<T> extends TypeConverter<List<T>, String> {
   String toSql(List<T> value) {
     return value.join(',');
   }
-
 }

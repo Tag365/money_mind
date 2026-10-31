@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Price tag (tags) with a euro sign, inside the 66dp adaptive safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:rotation="-20">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M40,38 H72 Q76,38 76,42 V66 Q76,70 72,70 H40 L28,54 Z" />
+        <path
+            android:fillColor="#00897B"
+            android:pathData="M35,54 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
+        <path
+            android:pathData="M66.36,47.64 A9,9 0 1,0 66.36,60.36 M48,51 H60 M48,57 H60"
+            android:strokeColor="#00897B"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round" />
+    </group>
+</vector>
