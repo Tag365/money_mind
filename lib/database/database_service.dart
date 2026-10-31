@@ -2,6 +2,16 @@ import 'package:drift/drift.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 
+/// Sum of all statements in one month (or one year when [month] is null).
+class PeriodTotal {
+  final int year;
+  final int? month;
+  final double total;
+  final int count;
+
+  const PeriodTotal(this.year, this.month, this.total, this.count);
+}
+
 class DatabaseService {
   // Singleton pattern
   DatabaseService._internal();
@@ -23,7 +33,6 @@ class DatabaseService {
   Future<int> addAccount(
     String name,
     AccountType type,
-    double initialValue,
   ) async {
     return await database
         .into(database.accounts)
@@ -31,17 +40,20 @@ class DatabaseService {
           AccountsCompanion(
             name: Value(name),
             type: Value(type),
-            balance: Value(initialValue),
           ),
         );
   }
 
-  void deleteAccount(Account account) async {
-    database.delete(database.accounts).delete(account);
+  Future<void> deleteAccount(Account account) async {
+    await database.delete(database.accounts).delete(account);
   }
 
   Future<List<Account>> getAccounts() async {
     return await database.select(database.accounts).get();
+  }
+
+  Stream<List<Account>> watchAccounts() {
+    return database.select(database.accounts).watch();
   }
 
   Future<Account> getAccountById(int id) async {
@@ -56,7 +68,7 @@ class DatabaseService {
     )..where((tbl) => tbl.account.equals(account.id))).get();
   }
 
-  void addStatement(
+  Future<void> addStatement(
     String title,
     double amount,
     int accountId,
@@ -65,33 +77,88 @@ class DatabaseService {
     List<String> tags,
     String notes,
   ) async {
+    await addStatements([
+      StatementsCompanion(
+        title: Value(title),
+        createdAt: Value(DateTime.now()),
+        paymentDate: Value(paymentDate),
+        account: Value(accountId),
+        useDate: Value(useDate),
+        amount: Value(amount),
+        tags: Value(tags),
+        note: Value(notes),
+      ),
+    ]);
+  }
+
+  /// Inserts all [statements] in one transaction and updates the balance of
+  /// each affected account once.
+  Future<void> addStatements(List<StatementsCompanion> statements) async {
+    final balanceChanges = <int, double>{};
+    for (final statement in statements) {
+      final accountId = statement.account.value;
+      balanceChanges[accountId] =
+          (balanceChanges[accountId] ?? 0) + statement.amount.value;
+    }
+
     await database.transaction(() async {
-      await database
-          .into(database.statements)
-          .insert(
-            StatementsCompanion(
-              title: Value(title),
-              createdAt: Value(DateTime.now()),
-              paymentDate: Value(paymentDate),
-              account: Value(accountId),
-              useDate: Value(useDate),
-              amount: Value(amount),
-              tags: Value(tags),
-              note: Value(notes),
-            ),
-          )
-          .onError((error, stackTrace) {
-            throw Exception(error);
-          });
-      Account account = await getAccountById(accountId);
-      final double newBalance = account.balance + amount;
-      await (database.update(database.accounts)
-            ..where((tbl) => tbl.id.equals(accountId)))
-          .write(AccountsCompanion(balance: Value(newBalance)));
+      await database.batch((batch) {
+        batch.insertAll(database.statements, statements);
+      });
+      for (final MapEntry(key: accountId, value: change)
+          in balanceChanges.entries) {
+        // Let SQLite add to the current value instead of read-modify-write.
+        await (database.update(database.accounts)
+              ..where((tbl) => tbl.id.equals(accountId)))
+            .write(
+              AccountsCompanion.custom(
+                balance: database.accounts.balance + Variable(change),
+              ),
+            );
+      }
     });
   }
 
-  Future<List<Statement>> getAllStatements() async {
-    return await database.select(database.statements).get();
+  /// Newest statements first, at most [limit] rows. Emits again whenever the
+  /// statements table changes.
+  Stream<List<Statement>> watchStatements({required int limit}) {
+    return (database.select(database.statements)
+          ..orderBy([
+            (tbl) => OrderingTerm.desc(tbl.paymentDate),
+            (tbl) => OrderingTerm.desc(tbl.id),
+          ])
+          ..limit(limit))
+        .watch();
+  }
+
+  /// Totals per month (or per year when [yearly] is true), newest first.
+  /// Aggregated by SQLite, so no statement rows are loaded into Dart.
+  Stream<List<PeriodTotal>> watchTotals({required bool yearly}) {
+    final tbl = database.statements;
+    // Group by local time, otherwise late-evening statements on the last day
+    // of a month would count towards the next month.
+    final localDate = tbl.paymentDate.modify(DateTimeModifier.localTime());
+    final year = localDate.year;
+    final month = localDate.month;
+    final total = tbl.amount.sum();
+    final count = tbl.id.count();
+
+    final groupColumns = yearly ? [year] : [year, month];
+    final query = database.selectOnly(tbl)
+      ..addColumns([...groupColumns, total, count])
+      ..groupBy(groupColumns)
+      ..orderBy([for (final c in groupColumns) OrderingTerm.desc(c)]);
+
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          PeriodTotal(
+            row.read(year)!,
+            yearly ? null : row.read(month),
+            row.read(total) ?? 0,
+            row.read(count) ?? 0,
+          ),
+      ],
+    );
   }
 }

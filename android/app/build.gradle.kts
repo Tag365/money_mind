@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "de.jonas.money_mind"
+        applicationId = "de.jonas.money_mind_dev"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

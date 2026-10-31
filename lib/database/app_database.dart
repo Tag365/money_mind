@@ -15,7 +15,31 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+      await _createIndexes();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await _createIndexes();
+    },
+  );
+
+  // Indexes for the list (sorted by date) and per-account queries.
+  Future<void> _createIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_statements_payment_date '
+      'ON statements (payment_date)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_statements_account_payment_date '
+      'ON statements (account, payment_date)',
+    );
+  }
+
   static QueryExecutor _openConnection() {
     return driftDatabase(
       name: 'my_database',

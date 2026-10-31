@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:money_mind/components/drag_indicator.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 
@@ -24,15 +23,15 @@ class _AccountFormState extends State<AccountForm> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    final double initialBalance = double.parse(balanceController.text);
     int accountId = await databaseService.addAccount(
       accountNameController.text,
       accountType!,
-      double.parse(balanceController.text),
     );
 
     databaseService.addStatement(
       "Initial Balance",
-      double.parse(balanceController.text),
+      initialBalance,
       accountId,
       DateTime.timestamp(),
       DateTime.timestamp(),
@@ -63,19 +62,15 @@ class _AccountFormState extends State<AccountForm> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DragIndicator(),
               Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text(
                       'Add account',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     SizedBox(height: 20),
                     Form(
@@ -107,7 +102,7 @@ class _AccountFormState extends State<AccountForm> {
                             inputFormatters: <TextInputFormatter>[
                               FilteringTextInputFormatter.allow(
                                 RegExp(
-                                  r'([1-9]+\d*[.,]?\d{0,2})|(0[.,]?\d{0,2})',
+                                  r'([1-9]\d*\.?\d{0,2})|(0\.?\d{0,2})',
                                 ),
                               ),
                             ],
@@ -138,7 +133,10 @@ class _AccountFormState extends State<AccountForm> {
                           ),
                           SizedBox(
                             width: double.infinity,
-                            child: ElevatedButton(
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                minimumSize: Size.fromHeight(52),
+                              ),
                               onPressed: _addAccount,
                               child: Text('Add account'),
                             ),
