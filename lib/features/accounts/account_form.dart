@@ -37,7 +37,7 @@ class _AccountFormState extends State<AccountForm> {
       accountId,
       DateTime.timestamp(),
       DateTime.timestamp(),
-      ["Auto-generated"],
+      [DatabaseService.autoTag],
       "This statement was auto-generated when the account was created.",
     );
     if (!mounted) return;
