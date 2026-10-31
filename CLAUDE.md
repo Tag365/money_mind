@@ -19,13 +19,15 @@ flutter build apk --release
 
 `lib/database/app_database.g.dart` is generated but committed (CI does not run build_runner). Regenerate and commit it after any change to the tables in `lib/database/models/` or to `AppDatabase`.
 
+After every Dart code change, hot reload the running app; for UI changes, also check them on the emulator with screenshots. Both steps are in the `check-app` skill (`.claude/skills/check-app/SKILL.md`).
+
 Widget tests swap in an in-memory database: `DatabaseService.instance.database = AppDatabase(NativeDatabase.memory())`. Do DB reads/writes inside `tester.runAsync`, and unmount the widget before `db.close()` so its watch streams are cancelled.
 
 ## Architecture
 
 - **UI**: `main.dart` → `TabNavigation.dart`, a `NavigationBar` + `IndexedStack` over three tabs in `lib/tabs/` (Add, Statements, Accounts). Modals live in `lib/modals/`, shared widgets in `lib/components/`. State is plain `StatefulWidget` + `StreamBuilder`; there is no state-management package.
 - **Data access**: all DB access goes through the `DatabaseService.instance` singleton (`lib/database/database_service.dart`), which lazily creates `AppDatabase`. Widgets subscribe to Drift `watch...()` streams, so writes refresh the UI automatically, with no manual reloads.
-- **Schema** (`lib/database/app_database.dart`): tables `Statements`, `Accounts`, `Tags`. `schemaVersion` is 3; bump it and add an `onUpgrade` step for schema changes. Indexes on `payment_date` / `(account, payment_date)` are created via raw SQL in the migration. The DB file lives in the app support directory.
+- **Schema** (`lib/database/app_database.dart`): tables `Statements`, `Accounts`, `Tags`, `Recurrences`. `schemaVersion` is 4; bump it and add an `onUpgrade` step for schema changes. Indexes on `payment_date` / `(account, payment_date)` are created via raw SQL in the migration. The DB file lives in the app support directory.
 - **Invariants**:
   - `Accounts.balance` is denormalized. Change statements only via `addStatement`/`addStatements`/`updateStatement`/`deleteStatement`, which adjust balances in the same transaction with an SQL-side increment (`_addToBalance`). Any new write path for statements must do the same.
   - `Statements.tags` is a comma-joined string via `ListConverter`, so tags must not contain commas.

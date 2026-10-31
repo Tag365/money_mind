@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/database/models/recurrences.dart';
 import 'package:money_mind/list/statement_filter.dart';
 
 /// Sum of all statements in one month (or one year when [month] is null).
@@ -178,7 +179,9 @@ class DatabaseService {
   }
 
   /// Replaces the stored statement with the same id by [updated] and moves the
-  /// amount between account balances accordingly.
+  /// amount between account balances accordingly. Upcoming statements of its
+  /// series (later and in the future) get the same title, amount, account,
+  /// tags and note.
   Future<void> updateStatement(Statement updated) async {
     await database.transaction(() async {
       // The stored row, not the caller's copy, is what the balances contain.
@@ -186,9 +189,37 @@ class DatabaseService {
         database.statements,
       )..where((tbl) => tbl.id.equals(updated.id))).getSingleOrNull();
       if (old == null) return;
-      await database.update(database.statements).replace(updated);
-      await _addToBalance(old.account, -old.amount);
-      await _addToBalance(updated.account, updated.amount);
+      final series = old.recurrence;
+      final after = updated.paymentDate.isAfter(DateTime.now())
+          ? updated.paymentDate
+          : DateTime.now();
+      final upcoming = series == null
+          ? <Statement>[]
+          : await (database.select(database.statements)..where(
+                  (tbl) =>
+                      tbl.recurrence.equals(series) &
+                      tbl.paymentDate.isBiggerThanValue(after),
+                ))
+                .get();
+      for (final (from, to) in [
+        // Only setRecurrence/stopRecurrence change the series link.
+        (old, updated.copyWith(recurrence: Value(series))),
+        for (final s in upcoming)
+          (
+            s,
+            s.copyWith(
+              title: updated.title,
+              amount: updated.amount,
+              account: updated.account,
+              tags: updated.tags,
+              note: updated.note,
+            ),
+          ),
+      ]) {
+        await database.update(database.statements).replace(to);
+        await _addToBalance(from.account, -from.amount);
+        await _addToBalance(to.account, to.amount);
+      }
     });
   }
 
@@ -212,6 +243,155 @@ class DatabaseService {
       // Already gone (e.g. tapped twice): the balance was adjusted back then.
       if (deleted == 0) return;
       await _addToBalance(statement.account, -statement.amount);
+    });
+  }
+
+  /// The recurrence of the statement with [statementId], or null when it does
+  /// not repeat.
+  Stream<Recurrence?> watchRecurrence(int statementId) {
+    final query = database.select(database.statements).join([
+      innerJoin(
+        database.recurrences,
+        database.recurrences.id.equalsExp(database.statements.recurrence),
+      ),
+    ])..where(database.statements.id.equals(statementId));
+    return query.watchSingleOrNull().map(
+      (row) => row?.readTable(database.recurrences),
+    );
+  }
+
+  /// The newest statement of the series [statement] belongs to, or
+  /// [statement] itself when it does not repeat. New occurrences copy it.
+  Future<Statement> latestInSeries(Statement statement) async {
+    final id = statement.recurrence;
+    if (id == null) return statement;
+    return await _latestOf(id) ?? statement;
+  }
+
+  Future<Statement?> _latestOf(int recurrenceId) {
+    return (database.select(database.statements)
+          ..where((tbl) => tbl.recurrence.equals(recurrenceId))
+          ..orderBy([
+            (tbl) => OrderingTerm.desc(tbl.paymentDate),
+            (tbl) => OrderingTerm.desc(tbl.id),
+          ])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  /// Makes [statement] repeat every [every] [unit]s, or changes the interval
+  /// of its series, then creates the occurrences that are already due.
+  Future<void> setRecurrence(
+    Statement statement,
+    RecurrenceUnit unit,
+    int every, {
+    bool ahead = false,
+  }) async {
+    assert(every > 0);
+    await database.transaction(() async {
+      final id = statement.recurrence;
+      final existing = id == null
+          ? null
+          : await (database.select(
+              database.recurrences,
+            )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
+      if (existing != null &&
+          existing.unit == unit &&
+          existing.every == every) {
+        await (database.update(database.recurrences)
+              ..where((tbl) => tbl.id.equals(existing.id)))
+            .write(RecurrencesCompanion(ahead: Value(ahead)));
+      } else {
+        // A new interval counts from the newest statement of the series.
+        final anchor = await latestInSeries(statement);
+        final recurrence = RecurrencesCompanion(
+          start: Value(anchor.paymentDate),
+          unit: Value(unit),
+          every: Value(every),
+          generated: const Value(1),
+          ahead: Value(ahead),
+        );
+        if (existing != null) {
+          await (database.update(
+            database.recurrences,
+          )..where((tbl) => tbl.id.equals(existing.id))).write(recurrence);
+        } else {
+          final newId = await database
+              .into(database.recurrences)
+              .insert(recurrence);
+          await (database.update(database.statements)
+                ..where((tbl) => tbl.id.equals(statement.id)))
+              .write(StatementsCompanion(recurrence: Value(newId)));
+        }
+      }
+      await addDueRecurrences();
+    });
+  }
+
+  /// Stops the series; its statements stay as they are.
+  Future<void> stopRecurrence(int recurrenceId) async {
+    await database.transaction(() async {
+      await (database.update(database.statements)
+            ..where((tbl) => tbl.recurrence.equals(recurrenceId)))
+          .write(const StatementsCompanion(recurrence: Value(null)));
+      await (database.delete(
+        database.recurrences,
+      )..where((tbl) => tbl.id.equals(recurrenceId))).go();
+    });
+  }
+
+  /// Creates every occurrence due by [at] (default: now), copying the newest
+  /// statement of each series. Series with `ahead` also get the next
+  /// occurrence within a month, but never more than one upcoming statement.
+  /// Safe to call any number of times: each occurrence is created once.
+  Future<void> addDueRecurrences({DateTime? at}) async {
+    final now = at ?? DateTime.now();
+    await database.transaction(() async {
+      final recurrences = await database.select(database.recurrences).get();
+      for (final r in recurrences) {
+        final template = await _latestOf(r.id);
+        if (template == null) {
+          // Every statement of the series was deleted.
+          await (database.delete(
+            database.recurrences,
+          )..where((tbl) => tbl.id.equals(r.id))).go();
+          continue;
+        }
+        final monthAhead = DateTime(
+          now.year,
+          now.month + 1,
+          now.day,
+          now.hour,
+          now.minute,
+        );
+        final useOffset = template.useDate.difference(template.paymentDate);
+        final due = <StatementsCompanion>[];
+        var latest = template.paymentDate;
+        var n = r.generated;
+        for (
+          var date = r.unit.occurrence(r.start, r.every, n);
+          !date.isAfter(now) ||
+              (r.ahead && !latest.isAfter(now) && !date.isAfter(monthAhead));
+          date = r.unit.occurrence(r.start, r.every, ++n)
+        ) {
+          latest = date;
+          due.add(
+            template
+                .toCompanion(false)
+                .copyWith(
+                  id: const Value.absent(),
+                  createdAt: Value(DateTime.now()),
+                  paymentDate: Value(date),
+                  useDate: Value(date.add(useOffset)),
+                ),
+          );
+        }
+        if (due.isEmpty) continue;
+        await addStatements(due);
+        await (database.update(database.recurrences)
+              ..where((tbl) => tbl.id.equals(r.id)))
+            .write(RecurrencesCompanion(generated: Value(n)));
+      }
     });
   }
 

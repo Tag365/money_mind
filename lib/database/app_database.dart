@@ -3,6 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 import 'package:money_mind/database/models/list_converter.dart';
+import 'package:money_mind/database/models/recurrences.dart';
 
 import 'models/accounts.dart';
 import 'models/statements.dart';
@@ -10,13 +11,13 @@ import 'models/tags.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Statements, Accounts, Tags])
+@DriftDatabase(tables: [Statements, Accounts, Tags, Recurrences])
 class AppDatabase extends _$AppDatabase {
   // Tests pass NativeDatabase.memory().
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -27,6 +28,17 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) await _createIndexes();
       if (from < 3) await m.addColumn(tags, tags.color);
+      if (from < 4) {
+        await m.createTable(recurrences);
+        // Upgrades are not transactional: a run cut short (e.g. by a restart)
+        // may have added the column without storing the new version.
+        final columns = await customSelect(
+          'PRAGMA table_info(statements)',
+        ).get();
+        if (!columns.any((c) => c.read<String>('name') == 'recurrence')) {
+          await m.addColumn(statements, statements.recurrence);
+        }
+      }
     },
   );
 

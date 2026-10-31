@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/tabs/add.dart';
 import 'package:money_mind/tabs/list.dart';
 import 'package:money_mind/tabs/account.dart';
@@ -18,6 +19,24 @@ class _TabNavigationState extends State<TabNavigation> {
   ];
 
   int _index = 1;
+
+  // Recurring statements fall due while the app is closed or in background.
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: DatabaseService.instance.addDueRecurrences,
+    );
+    DatabaseService.instance.addDueRecurrences();
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

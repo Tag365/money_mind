@@ -227,7 +227,16 @@ class _StatementTile extends StatelessWidget {
         builder: (context) =>
             StatementDetailsSheet(row, accountNames[statement.account]),
       ),
-      title: Text(statement.title, overflow: TextOverflow.ellipsis),
+      title: Row(
+        spacing: 4,
+        children: [
+          Flexible(
+            child: Text(statement.title, overflow: TextOverflow.ellipsis),
+          ),
+          if (statement.recurrence != null)
+            const Icon(Icons.repeat, size: 16, semanticLabel: 'Recurring'),
+        ],
+      ),
       isThreeLine: statement.tags.isNotEmpty,
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

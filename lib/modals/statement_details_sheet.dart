@@ -1,9 +1,11 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import 'package:money_mind/components/money_text.dart';
 import 'package:money_mind/components/tag_label.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
+import 'package:money_mind/modals/recurrence_dialog.dart';
 import 'package:money_mind/tabs/add.dart';
 
 /// Shows all information of one statement, with edit and delete actions.
@@ -19,11 +21,20 @@ class StatementDetailsSheet extends StatefulWidget {
 
 class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
   late final Stream<List<Tag>> _tags = DatabaseService.instance.watchTags();
+  late final Stream<Recurrence?> _recurrence = DatabaseService.instance
+      .watchRecurrence(_statement.id);
 
   Statement get _statement => widget.row.statement;
 
-  Widget _info(IconData icon, String label, Widget value) => ListTile(
+  Widget _info(
+    IconData icon,
+    String label,
+    Widget value, {
+    VoidCallback? onTap,
+  }) => ListTile(
     contentPadding: EdgeInsets.zero,
+    onTap: onTap,
+    trailing: onTap == null ? null : const Icon(Icons.chevron_right),
     leading: Icon(icon),
     title: Text(label, style: Theme.of(context).textTheme.labelMedium),
     subtitle: DefaultTextStyle.merge(
@@ -48,6 +59,17 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
         const SnackBar(content: Text('Statement updated')),
       );
     }
+  }
+
+  Future<void> _editRecurrence(Recurrence? recurrence) async {
+    // The row may be stale: read the current link to the series.
+    final statement = _statement.copyWith(recurrence: Value(recurrence?.id));
+    final latest = await DatabaseService.instance.latestInSeries(statement);
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => RecurrenceDialog(statement, latest, recurrence),
+    );
   }
 
   Future<void> _delete() async {
@@ -160,6 +182,24 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             ),
           if (statement.note.isNotEmpty)
             _info(Icons.notes, 'Note', Text(statement.note)),
+          StreamBuilder(
+            stream: _recurrence,
+            builder: (context, snapshot) {
+              final recurrence = snapshot.data;
+              return _info(
+                Icons.repeat,
+                'Repeats',
+                Text(
+                  recurrence == null
+                      ? 'Never'
+                      : describeInterval(recurrence.unit, recurrence.every),
+                ),
+                onTap: snapshot.connectionState == ConnectionState.waiting
+                    ? null
+                    : () => _editRecurrence(recurrence),
+              );
+            },
+          ),
           const SizedBox(height: 16),
           Row(
             spacing: 8,

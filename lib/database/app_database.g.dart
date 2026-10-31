@@ -301,6 +301,412 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   }
 }
 
+class $RecurrencesTable extends Recurrences
+    with TableInfo<$RecurrencesTable, Recurrence> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RecurrencesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _startMeta = const VerificationMeta('start');
+  @override
+  late final GeneratedColumn<DateTime> start = GeneratedColumn<DateTime>(
+    'start',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<RecurrenceUnit, String> unit =
+      GeneratedColumn<String>(
+        'unit',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<RecurrenceUnit>($RecurrencesTable.$converterunit);
+  static const VerificationMeta _everyMeta = const VerificationMeta('every');
+  @override
+  late final GeneratedColumn<int> every = GeneratedColumn<int>(
+    'every',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _generatedMeta = const VerificationMeta(
+    'generated',
+  );
+  @override
+  late final GeneratedColumn<int> generated = GeneratedColumn<int>(
+    'generated',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _aheadMeta = const VerificationMeta('ahead');
+  @override
+  late final GeneratedColumn<bool> ahead = GeneratedColumn<bool>(
+    'ahead',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("ahead" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    start,
+    unit,
+    every,
+    generated,
+    ahead,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recurrences';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Recurrence> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('start')) {
+      context.handle(
+        _startMeta,
+        start.isAcceptableOrUnknown(data['start']!, _startMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startMeta);
+    }
+    if (data.containsKey('every')) {
+      context.handle(
+        _everyMeta,
+        every.isAcceptableOrUnknown(data['every']!, _everyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_everyMeta);
+    }
+    if (data.containsKey('generated')) {
+      context.handle(
+        _generatedMeta,
+        generated.isAcceptableOrUnknown(data['generated']!, _generatedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_generatedMeta);
+    }
+    if (data.containsKey('ahead')) {
+      context.handle(
+        _aheadMeta,
+        ahead.isAcceptableOrUnknown(data['ahead']!, _aheadMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Recurrence map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Recurrence(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      start: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start'],
+      )!,
+      unit: $RecurrencesTable.$converterunit.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}unit'],
+        )!,
+      ),
+      every: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}every'],
+      )!,
+      generated: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}generated'],
+      )!,
+      ahead: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}ahead'],
+      )!,
+    );
+  }
+
+  @override
+  $RecurrencesTable createAlias(String alias) {
+    return $RecurrencesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<RecurrenceUnit, String, String> $converterunit =
+      const EnumNameConverter<RecurrenceUnit>(RecurrenceUnit.values);
+}
+
+class Recurrence extends DataClass implements Insertable<Recurrence> {
+  final int id;
+
+  /// Payment date of occurrence 0; occurrence n is `unit.occurrence(start,
+  /// every, n)`. Counting from a fixed start avoids drift from clamped days.
+  final DateTime start;
+  final RecurrenceUnit unit;
+  final int every;
+
+  /// Occurrences already created, i.e. the index of the next one.
+  final int generated;
+
+  /// Create statements up to a month before they are due.
+  final bool ahead;
+  const Recurrence({
+    required this.id,
+    required this.start,
+    required this.unit,
+    required this.every,
+    required this.generated,
+    required this.ahead,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['start'] = Variable<DateTime>(start);
+    {
+      map['unit'] = Variable<String>(
+        $RecurrencesTable.$converterunit.toSql(unit),
+      );
+    }
+    map['every'] = Variable<int>(every);
+    map['generated'] = Variable<int>(generated);
+    map['ahead'] = Variable<bool>(ahead);
+    return map;
+  }
+
+  RecurrencesCompanion toCompanion(bool nullToAbsent) {
+    return RecurrencesCompanion(
+      id: Value(id),
+      start: Value(start),
+      unit: Value(unit),
+      every: Value(every),
+      generated: Value(generated),
+      ahead: Value(ahead),
+    );
+  }
+
+  factory Recurrence.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Recurrence(
+      id: serializer.fromJson<int>(json['id']),
+      start: serializer.fromJson<DateTime>(json['start']),
+      unit: $RecurrencesTable.$converterunit.fromJson(
+        serializer.fromJson<String>(json['unit']),
+      ),
+      every: serializer.fromJson<int>(json['every']),
+      generated: serializer.fromJson<int>(json['generated']),
+      ahead: serializer.fromJson<bool>(json['ahead']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'start': serializer.toJson<DateTime>(start),
+      'unit': serializer.toJson<String>(
+        $RecurrencesTable.$converterunit.toJson(unit),
+      ),
+      'every': serializer.toJson<int>(every),
+      'generated': serializer.toJson<int>(generated),
+      'ahead': serializer.toJson<bool>(ahead),
+    };
+  }
+
+  Recurrence copyWith({
+    int? id,
+    DateTime? start,
+    RecurrenceUnit? unit,
+    int? every,
+    int? generated,
+    bool? ahead,
+  }) => Recurrence(
+    id: id ?? this.id,
+    start: start ?? this.start,
+    unit: unit ?? this.unit,
+    every: every ?? this.every,
+    generated: generated ?? this.generated,
+    ahead: ahead ?? this.ahead,
+  );
+  Recurrence copyWithCompanion(RecurrencesCompanion data) {
+    return Recurrence(
+      id: data.id.present ? data.id.value : this.id,
+      start: data.start.present ? data.start.value : this.start,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      every: data.every.present ? data.every.value : this.every,
+      generated: data.generated.present ? data.generated.value : this.generated,
+      ahead: data.ahead.present ? data.ahead.value : this.ahead,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Recurrence(')
+          ..write('id: $id, ')
+          ..write('start: $start, ')
+          ..write('unit: $unit, ')
+          ..write('every: $every, ')
+          ..write('generated: $generated, ')
+          ..write('ahead: $ahead')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, start, unit, every, generated, ahead);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Recurrence &&
+          other.id == this.id &&
+          other.start == this.start &&
+          other.unit == this.unit &&
+          other.every == this.every &&
+          other.generated == this.generated &&
+          other.ahead == this.ahead);
+}
+
+class RecurrencesCompanion extends UpdateCompanion<Recurrence> {
+  final Value<int> id;
+  final Value<DateTime> start;
+  final Value<RecurrenceUnit> unit;
+  final Value<int> every;
+  final Value<int> generated;
+  final Value<bool> ahead;
+  const RecurrencesCompanion({
+    this.id = const Value.absent(),
+    this.start = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.every = const Value.absent(),
+    this.generated = const Value.absent(),
+    this.ahead = const Value.absent(),
+  });
+  RecurrencesCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime start,
+    required RecurrenceUnit unit,
+    required int every,
+    required int generated,
+    this.ahead = const Value.absent(),
+  }) : start = Value(start),
+       unit = Value(unit),
+       every = Value(every),
+       generated = Value(generated);
+  static Insertable<Recurrence> custom({
+    Expression<int>? id,
+    Expression<DateTime>? start,
+    Expression<String>? unit,
+    Expression<int>? every,
+    Expression<int>? generated,
+    Expression<bool>? ahead,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (start != null) 'start': start,
+      if (unit != null) 'unit': unit,
+      if (every != null) 'every': every,
+      if (generated != null) 'generated': generated,
+      if (ahead != null) 'ahead': ahead,
+    });
+  }
+
+  RecurrencesCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? start,
+    Value<RecurrenceUnit>? unit,
+    Value<int>? every,
+    Value<int>? generated,
+    Value<bool>? ahead,
+  }) {
+    return RecurrencesCompanion(
+      id: id ?? this.id,
+      start: start ?? this.start,
+      unit: unit ?? this.unit,
+      every: every ?? this.every,
+      generated: generated ?? this.generated,
+      ahead: ahead ?? this.ahead,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (start.present) {
+      map['start'] = Variable<DateTime>(start.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(
+        $RecurrencesTable.$converterunit.toSql(unit.value),
+      );
+    }
+    if (every.present) {
+      map['every'] = Variable<int>(every.value);
+    }
+    if (generated.present) {
+      map['generated'] = Variable<int>(generated.value);
+    }
+    if (ahead.present) {
+      map['ahead'] = Variable<bool>(ahead.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecurrencesCompanion(')
+          ..write('id: $id, ')
+          ..write('start: $start, ')
+          ..write('unit: $unit, ')
+          ..write('every: $every, ')
+          ..write('generated: $generated, ')
+          ..write('ahead: $ahead')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $StatementsTable extends Statements
     with TableInfo<$StatementsTable, Statement> {
   @override
@@ -403,6 +809,20 @@ class $StatementsTable extends Statements
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _recurrenceMeta = const VerificationMeta(
+    'recurrence',
+  );
+  @override
+  late final GeneratedColumn<int> recurrence = GeneratedColumn<int>(
+    'recurrence',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES recurrences (id)',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -414,6 +834,7 @@ class $StatementsTable extends Statements
     amount,
     tags,
     note,
+    recurrence,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -489,6 +910,12 @@ class $StatementsTable extends Statements
     } else if (isInserting) {
       context.missing(_noteMeta);
     }
+    if (data.containsKey('recurrence')) {
+      context.handle(
+        _recurrenceMeta,
+        recurrence.isAcceptableOrUnknown(data['recurrence']!, _recurrenceMeta),
+      );
+    }
     return context;
   }
 
@@ -536,6 +963,10 @@ class $StatementsTable extends Statements
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       )!,
+      recurrence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}recurrence'],
+      ),
     );
   }
 
@@ -558,6 +989,7 @@ class Statement extends DataClass implements Insertable<Statement> {
   final double amount;
   final List<String> tags;
   final String note;
+  final int? recurrence;
   const Statement({
     required this.id,
     required this.createdAt,
@@ -568,6 +1000,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     required this.amount,
     required this.tags,
     required this.note,
+    this.recurrence,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -585,6 +1018,9 @@ class Statement extends DataClass implements Insertable<Statement> {
       );
     }
     map['note'] = Variable<String>(note);
+    if (!nullToAbsent || recurrence != null) {
+      map['recurrence'] = Variable<int>(recurrence);
+    }
     return map;
   }
 
@@ -599,6 +1035,9 @@ class Statement extends DataClass implements Insertable<Statement> {
       amount: Value(amount),
       tags: Value(tags),
       note: Value(note),
+      recurrence: recurrence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrence),
     );
   }
 
@@ -617,6 +1056,7 @@ class Statement extends DataClass implements Insertable<Statement> {
       amount: serializer.fromJson<double>(json['amount']),
       tags: serializer.fromJson<List<String>>(json['tags']),
       note: serializer.fromJson<String>(json['note']),
+      recurrence: serializer.fromJson<int?>(json['recurrence']),
     );
   }
   @override
@@ -632,6 +1072,7 @@ class Statement extends DataClass implements Insertable<Statement> {
       'amount': serializer.toJson<double>(amount),
       'tags': serializer.toJson<List<String>>(tags),
       'note': serializer.toJson<String>(note),
+      'recurrence': serializer.toJson<int?>(recurrence),
     };
   }
 
@@ -645,6 +1086,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     double? amount,
     List<String>? tags,
     String? note,
+    Value<int?> recurrence = const Value.absent(),
   }) => Statement(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -655,6 +1097,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     amount: amount ?? this.amount,
     tags: tags ?? this.tags,
     note: note ?? this.note,
+    recurrence: recurrence.present ? recurrence.value : this.recurrence,
   );
   Statement copyWithCompanion(StatementsCompanion data) {
     return Statement(
@@ -669,6 +1112,9 @@ class Statement extends DataClass implements Insertable<Statement> {
       amount: data.amount.present ? data.amount.value : this.amount,
       tags: data.tags.present ? data.tags.value : this.tags,
       note: data.note.present ? data.note.value : this.note,
+      recurrence: data.recurrence.present
+          ? data.recurrence.value
+          : this.recurrence,
     );
   }
 
@@ -683,7 +1129,8 @@ class Statement extends DataClass implements Insertable<Statement> {
           ..write('useDate: $useDate, ')
           ..write('amount: $amount, ')
           ..write('tags: $tags, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('recurrence: $recurrence')
           ..write(')'))
         .toString();
   }
@@ -699,6 +1146,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     amount,
     tags,
     note,
+    recurrence,
   );
   @override
   bool operator ==(Object other) =>
@@ -712,7 +1160,8 @@ class Statement extends DataClass implements Insertable<Statement> {
           other.useDate == this.useDate &&
           other.amount == this.amount &&
           other.tags == this.tags &&
-          other.note == this.note);
+          other.note == this.note &&
+          other.recurrence == this.recurrence);
 }
 
 class StatementsCompanion extends UpdateCompanion<Statement> {
@@ -725,6 +1174,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
   final Value<double> amount;
   final Value<List<String>> tags;
   final Value<String> note;
+  final Value<int?> recurrence;
   const StatementsCompanion({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -735,6 +1185,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     this.amount = const Value.absent(),
     this.tags = const Value.absent(),
     this.note = const Value.absent(),
+    this.recurrence = const Value.absent(),
   });
   StatementsCompanion.insert({
     this.id = const Value.absent(),
@@ -746,6 +1197,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     required double amount,
     required List<String> tags,
     required String note,
+    this.recurrence = const Value.absent(),
   }) : createdAt = Value(createdAt),
        title = Value(title),
        paymentDate = Value(paymentDate),
@@ -764,6 +1216,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     Expression<double>? amount,
     Expression<String>? tags,
     Expression<String>? note,
+    Expression<int>? recurrence,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -775,6 +1228,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
       if (amount != null) 'amount': amount,
       if (tags != null) 'tags': tags,
       if (note != null) 'note': note,
+      if (recurrence != null) 'recurrence': recurrence,
     });
   }
 
@@ -788,6 +1242,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     Value<double>? amount,
     Value<List<String>>? tags,
     Value<String>? note,
+    Value<int?>? recurrence,
   }) {
     return StatementsCompanion(
       id: id ?? this.id,
@@ -799,6 +1254,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
       amount: amount ?? this.amount,
       tags: tags ?? this.tags,
       note: note ?? this.note,
+      recurrence: recurrence ?? this.recurrence,
     );
   }
 
@@ -834,6 +1290,9 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (recurrence.present) {
+      map['recurrence'] = Variable<int>(recurrence.value);
+    }
     return map;
   }
 
@@ -848,7 +1307,8 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
           ..write('useDate: $useDate, ')
           ..write('amount: $amount, ')
           ..write('tags: $tags, ')
-          ..write('note: $note')
+          ..write('note: $note, ')
+          ..write('recurrence: $recurrence')
           ..write(')'))
         .toString();
   }
@@ -1094,6 +1554,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
+  late final $RecurrencesTable recurrences = $RecurrencesTable(this);
   late final $StatementsTable statements = $StatementsTable(this);
   late final $TagsTable tags = $TagsTable(this);
   @override
@@ -1102,6 +1563,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     accounts,
+    recurrences,
     statements,
     tags,
   ];
@@ -1384,6 +1846,322 @@ typedef $$AccountsTableProcessedTableManager =
       Account,
       PrefetchHooks Function({bool statementsRefs})
     >;
+typedef $$RecurrencesTableCreateCompanionBuilder =
+    RecurrencesCompanion Function({
+      Value<int> id,
+      required DateTime start,
+      required RecurrenceUnit unit,
+      required int every,
+      required int generated,
+      Value<bool> ahead,
+    });
+typedef $$RecurrencesTableUpdateCompanionBuilder =
+    RecurrencesCompanion Function({
+      Value<int> id,
+      Value<DateTime> start,
+      Value<RecurrenceUnit> unit,
+      Value<int> every,
+      Value<int> generated,
+      Value<bool> ahead,
+    });
+
+final class $$RecurrencesTableReferences
+    extends BaseReferences<_$AppDatabase, $RecurrencesTable, Recurrence> {
+  $$RecurrencesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$StatementsTable, List<Statement>>
+  _statementsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.statements,
+    aliasName: 'recurrences__id__statements__recurrence',
+  );
+
+  $$StatementsTableProcessedTableManager get statementsRefs {
+    final manager = $$StatementsTableTableManager(
+      $_db,
+      $_db.statements,
+    ).filter((f) => f.recurrence.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_statementsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$RecurrencesTableFilterComposer
+    extends Composer<_$AppDatabase, $RecurrencesTable> {
+  $$RecurrencesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get start => $composableBuilder(
+    column: $table.start,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<RecurrenceUnit, RecurrenceUnit, String>
+  get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get every => $composableBuilder(
+    column: $table.every,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get generated => $composableBuilder(
+    column: $table.generated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get ahead => $composableBuilder(
+    column: $table.ahead,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> statementsRefs(
+    Expression<bool> Function($$StatementsTableFilterComposer f) f,
+  ) {
+    final $$StatementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.statements,
+      getReferencedColumn: (t) => t.recurrence,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StatementsTableFilterComposer(
+            $db: $db,
+            $table: $db.statements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RecurrencesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RecurrencesTable> {
+  $$RecurrencesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get start => $composableBuilder(
+    column: $table.start,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get every => $composableBuilder(
+    column: $table.every,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get generated => $composableBuilder(
+    column: $table.generated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get ahead => $composableBuilder(
+    column: $table.ahead,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RecurrencesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RecurrencesTable> {
+  $$RecurrencesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get start =>
+      $composableBuilder(column: $table.start, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<RecurrenceUnit, String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<int> get every =>
+      $composableBuilder(column: $table.every, builder: (column) => column);
+
+  GeneratedColumn<int> get generated =>
+      $composableBuilder(column: $table.generated, builder: (column) => column);
+
+  GeneratedColumn<bool> get ahead =>
+      $composableBuilder(column: $table.ahead, builder: (column) => column);
+
+  Expression<T> statementsRefs<T extends Object>(
+    Expression<T> Function($$StatementsTableAnnotationComposer a) f,
+  ) {
+    final $$StatementsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.statements,
+      getReferencedColumn: (t) => t.recurrence,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StatementsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.statements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$RecurrencesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RecurrencesTable,
+          Recurrence,
+          $$RecurrencesTableFilterComposer,
+          $$RecurrencesTableOrderingComposer,
+          $$RecurrencesTableAnnotationComposer,
+          $$RecurrencesTableCreateCompanionBuilder,
+          $$RecurrencesTableUpdateCompanionBuilder,
+          (Recurrence, $$RecurrencesTableReferences),
+          Recurrence,
+          PrefetchHooks Function({bool statementsRefs})
+        > {
+  $$RecurrencesTableTableManager(_$AppDatabase db, $RecurrencesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RecurrencesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RecurrencesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RecurrencesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> start = const Value.absent(),
+                Value<RecurrenceUnit> unit = const Value.absent(),
+                Value<int> every = const Value.absent(),
+                Value<int> generated = const Value.absent(),
+                Value<bool> ahead = const Value.absent(),
+              }) => RecurrencesCompanion(
+                id: id,
+                start: start,
+                unit: unit,
+                every: every,
+                generated: generated,
+                ahead: ahead,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime start,
+                required RecurrenceUnit unit,
+                required int every,
+                required int generated,
+                Value<bool> ahead = const Value.absent(),
+              }) => RecurrencesCompanion.insert(
+                id: id,
+                start: start,
+                unit: unit,
+                every: every,
+                generated: generated,
+                ahead: ahead,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RecurrencesTable, Recurrence>(table),
+                  $$RecurrencesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({statementsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (statementsRefs) db.statements],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (statementsRefs)
+                    await $_getPrefetchedDataByColumns<
+                      Recurrence,
+                      $RecurrencesTable,
+                      Statement,
+                      $StatementsTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$RecurrencesTableReferences
+                          ._statementsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$RecurrencesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).statementsRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'recurrence',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RecurrencesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RecurrencesTable,
+      Recurrence,
+      $$RecurrencesTableFilterComposer,
+      $$RecurrencesTableOrderingComposer,
+      $$RecurrencesTableAnnotationComposer,
+      $$RecurrencesTableCreateCompanionBuilder,
+      $$RecurrencesTableUpdateCompanionBuilder,
+      (Recurrence, $$RecurrencesTableReferences),
+      Recurrence,
+      PrefetchHooks Function({bool statementsRefs})
+    >;
 typedef $$StatementsTableCreateCompanionBuilder =
     StatementsCompanion Function({
       Value<int> id,
@@ -1395,6 +2173,7 @@ typedef $$StatementsTableCreateCompanionBuilder =
       required double amount,
       required List<String> tags,
       required String note,
+      Value<int?> recurrence,
     });
 typedef $$StatementsTableUpdateCompanionBuilder =
     StatementsCompanion Function({
@@ -1407,6 +2186,7 @@ typedef $$StatementsTableUpdateCompanionBuilder =
       Value<double> amount,
       Value<List<String>> tags,
       Value<String> note,
+      Value<int?> recurrence,
     });
 
 final class $$StatementsTableReferences
@@ -1424,6 +2204,23 @@ final class $$StatementsTableReferences
       $_db.accounts,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_accountTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $RecurrencesTable _recurrenceTable(_$AppDatabase db) =>
+      db.recurrences.createAlias('statements__recurrence__recurrences__id');
+
+  $$RecurrencesTableProcessedTableManager? get recurrence {
+    final $_column = $_itemColumn<int>('recurrence');
+    if ($_column == null) return null;
+    final manager = $$RecurrencesTableTableManager(
+      $_db,
+      $_db.recurrences,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_recurrenceTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -1495,6 +2292,29 @@ class $$StatementsTableFilterComposer
           }) => $$AccountsTableFilterComposer(
             $db: $db,
             $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$RecurrencesTableFilterComposer get recurrence {
+    final $$RecurrencesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recurrence,
+      referencedTable: $db.recurrences,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurrencesTableFilterComposer(
+            $db: $db,
+            $table: $db.recurrences,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -1576,6 +2396,29 @@ class $$StatementsTableOrderingComposer
     );
     return composer;
   }
+
+  $$RecurrencesTableOrderingComposer get recurrence {
+    final $$RecurrencesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recurrence,
+      referencedTable: $db.recurrences,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurrencesTableOrderingComposer(
+            $db: $db,
+            $table: $db.recurrences,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$StatementsTableAnnotationComposer
@@ -1635,6 +2478,29 @@ class $$StatementsTableAnnotationComposer
     );
     return composer;
   }
+
+  $$RecurrencesTableAnnotationComposer get recurrence {
+    final $$RecurrencesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recurrence,
+      referencedTable: $db.recurrences,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RecurrencesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.recurrences,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$StatementsTableTableManager
@@ -1650,7 +2516,7 @@ class $$StatementsTableTableManager
           $$StatementsTableUpdateCompanionBuilder,
           (Statement, $$StatementsTableReferences),
           Statement,
-          PrefetchHooks Function({bool account})
+          PrefetchHooks Function({bool account, bool recurrence})
         > {
   $$StatementsTableTableManager(_$AppDatabase db, $StatementsTable table)
     : super(
@@ -1674,6 +2540,7 @@ class $$StatementsTableTableManager
                 Value<double> amount = const Value.absent(),
                 Value<List<String>> tags = const Value.absent(),
                 Value<String> note = const Value.absent(),
+                Value<int?> recurrence = const Value.absent(),
               }) => StatementsCompanion(
                 id: id,
                 createdAt: createdAt,
@@ -1684,6 +2551,7 @@ class $$StatementsTableTableManager
                 amount: amount,
                 tags: tags,
                 note: note,
+                recurrence: recurrence,
               ),
           createCompanionCallback:
               ({
@@ -1696,6 +2564,7 @@ class $$StatementsTableTableManager
                 required double amount,
                 required List<String> tags,
                 required String note,
+                Value<int?> recurrence = const Value.absent(),
               }) => StatementsCompanion.insert(
                 id: id,
                 createdAt: createdAt,
@@ -1706,6 +2575,7 @@ class $$StatementsTableTableManager
                 amount: amount,
                 tags: tags,
                 note: note,
+                recurrence: recurrence,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1715,7 +2585,7 @@ class $$StatementsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({account = false}) {
+          prefetchHooksCallback: ({account = false, recurrence = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -1748,6 +2618,19 @@ class $$StatementsTableTableManager
                               )
                               as T;
                     }
+                    if (recurrence) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.recurrence,
+                                referencedTable: $$StatementsTableReferences
+                                    ._recurrenceTable(db),
+                                referencedColumn: $$StatementsTableReferences
+                                    ._recurrenceTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
 
                     return state;
                   },
@@ -1772,7 +2655,7 @@ typedef $$StatementsTableProcessedTableManager =
       $$StatementsTableUpdateCompanionBuilder,
       (Statement, $$StatementsTableReferences),
       Statement,
-      PrefetchHooks Function({bool account})
+      PrefetchHooks Function({bool account, bool recurrence})
     >;
 typedef $$TagsTableCreateCompanionBuilder =
     TagsCompanion Function({
@@ -1925,6 +2808,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
+  $$RecurrencesTableTableManager get recurrences =>
+      $$RecurrencesTableTableManager(_db, _db.recurrences);
   $$StatementsTableTableManager get statements =>
       $$StatementsTableTableManager(_db, _db.statements);
   $$TagsTableTableManager get tags => $$TagsTableTableManager(_db, _db.tags);
