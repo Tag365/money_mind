@@ -7,6 +7,7 @@ import 'package:money_mind/components/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 import 'package:money_mind/modals/account_form.dart';
+import 'package:money_mind/modals/transfer_form.dart';
 
 import 'package:money_mind/database/app_database.dart';
 
@@ -162,6 +163,18 @@ class _AccountState extends State<AccountWidget> {
             tooltip: "Insert speedtest statements",
             onPressed: () => _insertSpeedtestStatements(accounts.first),
             child: const Icon(Icons.speed),
+          ),
+        if (accounts.length >= 2)
+          FloatingActionButton.extended(
+            heroTag: "transfer",
+            onPressed: () => showModalBottomSheet(
+              isScrollControlled: true,
+              showDragHandle: true,
+              context: context,
+              builder: (context) => TransferForm(accounts: accounts),
+            ),
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text("Transfer"),
           ),
         FloatingActionButton.extended(
           heroTag: "add",
