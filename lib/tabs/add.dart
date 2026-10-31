@@ -411,6 +411,7 @@ class _AddWidgetState extends State<AddWidget> {
                         children: [
                           TextFormField(
                             controller: titleController,
+                            style: Theme.of(context).textTheme.titleMedium,
                             decoration: const InputDecoration(
                               labelText: 'Title',
                               prefixIcon: Icon(Icons.short_text),
@@ -420,17 +421,21 @@ class _AddWidgetState extends State<AddWidget> {
                                 : null,
                           ),
                           _tagsField(),
-                          TextFormField(
-                            controller: noteController,
-                            decoration: const InputDecoration(
-                              labelText: 'Note',
-                              prefixIcon: Icon(Icons.notes),
-                            ),
-                            maxLines: null,
-                          ),
                         ],
                       ),
                     ),
+                  ),
+                  // Optional, so plain and below the card.
+                  TextFormField(
+                    controller: noteController,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    decoration: const InputDecoration(
+                      hintText: 'Write a note (optional)',
+                      prefixIcon: Icon(Icons.notes),
+                      filled: false,
+                      border: InputBorder.none,
+                    ),
+                    maxLines: null,
                   ),
                 ],
               ),
