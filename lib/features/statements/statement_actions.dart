@@ -28,8 +28,7 @@ Future<void> duplicateStatement(
   final saved = await Navigator.of(context).push<bool>(
     MaterialPageRoute(
       fullscreenDialog: true,
-      // Likely a new amount, so ready to type one.
-      builder: (_) => AddWidget(copyOf: statement, active: true),
+      builder: (_) => AddWidget(copyOf: statement),
     ),
   );
   if (saved == true) {

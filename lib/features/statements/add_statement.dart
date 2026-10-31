@@ -25,8 +25,8 @@ String _amountText(double amount) =>
 /// starts a new statement filled in from that one but dated now. Both are
 /// meant to be pushed as their own page, which pops with true after saving.
 ///
-/// The amount field gets the focus whenever [active] turns true, so the
-/// Create tab is ready to type into.
+/// Whenever [active] turns true, an unpicked date moves to now, so the
+/// Create tab never offers a stale time.
 class AddWidget extends StatefulWidget {
   final Statement? statement;
   final Statement? copyOf;
@@ -48,7 +48,6 @@ class _AddWidgetState extends State<AddWidget> {
   final titleController = TextEditingController();
   final amountController = TextEditingController();
   final noteController = TextEditingController();
-  final _amountFocus = FocusNode();
   final _titleFocus = FocusNode();
   DatabaseService databaseService = DatabaseService.instance;
 
@@ -81,22 +80,15 @@ class _AddWidgetState extends State<AddWidget> {
       selectedTags.addAll(s.tags);
     }
     if (_editing) date = widget.statement!.paymentDate.toLocal();
-    if (widget.active) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _activate());
-    }
   }
 
   @override
   void didUpdateWidget(AddWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.active && !oldWidget.active) _activate();
-  }
-
-  void _activate() {
-    if (!mounted) return;
     // The tab may have been opened hours ago.
-    if (!_editing && !_datePicked) setState(() => date = DateTime.now());
-    _amountFocus.requestFocus();
+    if (widget.active && !oldWidget.active && !_editing && !_datePicked) {
+      date = DateTime.now();
+    }
   }
 
   void _pickDate(DateTime picked) {
@@ -228,7 +220,6 @@ class _AddWidgetState extends State<AddWidget> {
       return;
     }
     _clear(keepDate: true);
-    _amountFocus.requestFocus();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Statement saved')));
@@ -239,7 +230,6 @@ class _AddWidgetState extends State<AddWidget> {
     titleController.dispose();
     amountController.dispose();
     noteController.dispose();
-    _amountFocus.dispose();
     _titleFocus.dispose();
     super.dispose();
   }
@@ -425,7 +415,6 @@ class _AddWidgetState extends State<AddWidget> {
               children: [
                 AmountField(
                   controller: amountController,
-                  focusNode: _amountFocus,
                   onNext: _titleFocus.requestFocus,
                   color: color,
                   trailing: FilledButton.tonal(
