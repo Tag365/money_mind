@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/home/widgets/total_balance_card.dart';
@@ -28,9 +29,47 @@ class _HomeState extends State<HomeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Home")),
-      body: _body(),
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.primaryContainer, colors.surface],
+        ),
+      ),
+      // Transparent, so the gradient shows through.
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text("Home"),
+          backgroundColor: Colors.transparent,
+          // Transparent reads as dark, which would give white status bar
+          // icons in light mode.
+          systemOverlayStyle: Theme.of(context).brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark,
+        ),
+        // Glassy cards: translucent with a faint edge, so the gradient shows
+        // through.
+        body: Theme(
+          data: Theme.of(context).copyWith(
+            cardTheme: Theme.of(context).cardTheme.copyWith(
+              // Glass lightens what is behind it, also in dark mode.
+              color: colors.brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : colors.surface.withValues(alpha: 0.35),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: colors.onSurface.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+          ),
+          child: _body(),
+        ),
+      ),
     );
   }
 
