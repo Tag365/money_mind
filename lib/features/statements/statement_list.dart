@@ -10,8 +10,17 @@ import 'package:money_mind/features/statements/statement_filter_sheet.dart';
 import 'package:money_mind/features/statements/widgets/active_filter_chips.dart';
 import 'package:money_mind/features/statements/widgets/period_tile.dart';
 
+/// The Statements tab. Pushed as its own page with a [title] and a [filter],
+/// e.g. to show one account's statements.
 class ListWidget extends StatefulWidget {
-  const ListWidget({super.key});
+  final String title;
+  final StatementFilter filter;
+
+  const ListWidget({
+    super.key,
+    this.title = 'Statements',
+    this.filter = const StatementFilter(),
+  });
 
   @override
   State<ListWidget> createState() => _ListState();
@@ -20,12 +29,15 @@ class ListWidget extends StatefulWidget {
 class _ListState extends State<ListWidget> {
   DatabaseService databaseService = DatabaseService.instance;
 
-  StatementFilter _filter = const StatementFilter();
+  // Kept: rebuilds of the page pass a new, equal filter object.
+  late final StatementFilter _initialFilter = widget.filter;
+  late StatementFilter _filter = _initialFilter;
 
   // Only replaced when the filter changes, so rebuilding the widget does not
   // run the query again.
   late Stream<List<PeriodTotal>> _totals = databaseService.watchTotals(
     yearly: false,
+    filter: _filter,
   );
 
   Map<int, String> _accountNames = {};
@@ -46,6 +58,10 @@ class _ListState extends State<ListWidget> {
     _accountsSubscription.cancel();
     super.dispose();
   }
+
+  /// Whether the filter differs from the one the page opened with, which its
+  /// title already names.
+  bool get _filtered => _filter.isActive && !identical(_filter, _initialFilter);
 
   void _setFilter(StatementFilter filter) {
     setState(() {
@@ -76,7 +92,7 @@ class _ListState extends State<ListWidget> {
       return Center(child: CircularProgressIndicator());
     }
     if (asyncSnapshot.data!.isEmpty) {
-      if (!_filter.isActive) {
+      if (!_filtered) {
         return Center(child: Text("No statements found."));
       }
       return Center(
@@ -85,7 +101,7 @@ class _ListState extends State<ListWidget> {
           children: [
             const Text("No statements match the filter."),
             TextButton(
-              onPressed: () => _setFilter(const StatementFilter()),
+              onPressed: () => _setFilter(_initialFilter),
               child: const Text("Clear filter"),
             ),
           ],
@@ -100,13 +116,13 @@ class _ListState extends State<ListWidget> {
     return GlassBackground(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Statements'),
+          title: Text(widget.title),
           actions: [
             IconButton(
               tooltip: 'Filter',
               onPressed: _openFilter,
               icon: Badge(
-                isLabelVisible: _filter.isActive,
+                isLabelVisible: _filtered,
                 child: const Icon(Icons.filter_list),
               ),
             ),
@@ -114,7 +130,7 @@ class _ListState extends State<ListWidget> {
         ),
         body: Column(
           children: [
-            if (_filter.isActive)
+            if (_filtered)
               ActiveFilterChips(
                 filter: _filter,
                 accountNames: _accountNames,

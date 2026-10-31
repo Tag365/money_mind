@@ -47,7 +47,7 @@ class _TabNavigationState extends State<TabNavigation> {
       body: IndexedStack(
         index: _index,
         children: [
-          const HomeWidget(),
+          HomeWidget(onOpenTab: _select),
           AddWidget(active: _index == 1),
           const ListWidget(),
           const AccountWidget(),
