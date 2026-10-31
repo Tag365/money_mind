@@ -136,13 +136,15 @@ class _ListState extends State<ListWidget> {
 }
 
 class _StatementTile extends StatelessWidget {
-  final Statement statement;
+  final StatementWithBalance row;
   final Map<int, String> accountNames;
 
-  const _StatementTile(this.statement, this.accountNames);
+  const _StatementTile(this.row, this.accountNames);
 
   @override
   Widget build(BuildContext context) {
+    final statement = row.statement;
+    final balance = row.balance;
     return ListTile(
       title: Text(statement.title, overflow: TextOverflow.ellipsis),
       isThreeLine: statement.tags.isNotEmpty,
@@ -162,7 +164,20 @@ class _StatementTile extends StatelessWidget {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: MoneyText(statement.amount),
+      trailing: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          MoneyText(statement.amount),
+          if (balance != null)
+            Text(
+              "${balance.toStringAsFixed(2)} €",
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -234,7 +249,8 @@ class _PeriodStatements extends StatefulWidget {
 }
 
 class _PeriodStatementsState extends State<_PeriodStatements> {
-  late final Stream<List<Statement>> _statements = DatabaseService.instance
+  late final Stream<List<StatementWithBalance>> _statements = DatabaseService
+      .instance
       .watchStatementsBetween(
         widget.period.start,
         widget.period.end,

@@ -38,7 +38,7 @@ void main() {
     final statements = await service
         .watchStatementsBetween(start, end, filter: filter)
         .first;
-    return [for (final s in statements) s.title]..sort();
+    return [for (final s in statements) s.statement.title]..sort();
   }
 
   test('no filter shows everything', () async {
@@ -87,6 +87,19 @@ void main() {
     expect(await titles(const StatementFilter(text: 'shop')), ['100% refund']);
     expect(await titles(const StatementFilter(text: '0%')), ['100% refund']);
     expect(await titles(const StatementFilter(text: '_')), isEmpty);
+  });
+
+  test('running balance counts statements hidden by the filter', () async {
+    Future<List<double?>> balances(StatementFilter filter) async => [
+      for (final s
+          in await service
+              .watchStatementsBetween(start, end, filter: filter)
+              .first)
+        s.balance,
+    ];
+    // Same payment date, so newest id first: Plaster then Breakfast.
+    expect(await balances(StatementFilter(accounts: {cash})), [-8, -3]);
+    expect(await balances(const StatementFilter(tags: {'Ein'})), [-8]);
   });
 
   test('monthly totals use the filter', () async {

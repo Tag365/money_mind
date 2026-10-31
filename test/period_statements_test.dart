@@ -23,7 +23,7 @@ void main() {
         .watchStatementsBetween(sept.start, sept.end)
         .first;
 
-    expect(statements.map((s) => s.title), [
+    expect(statements.map((s) => s.statement.title), [
       'last second of Sept',
       'first of Sept',
     ]);
@@ -36,6 +36,11 @@ void main() {
     expect(days.map((d) => d.day), [DateTime(2026, 9, 30), DateTime(2026, 9)]);
     expect(days.map((d) => d.statements.length), [2, 1]);
     expect(days.first.total, -2);
+    // Balance after each statement; the October one comes later in time.
+    expect(
+      [for (final d in days) ...d.statements.map((s) => s.balance)],
+      [-3, -2, -1],
+    );
 
     final year = (await service.watchTotals(yearly: true).first).single;
     expect(year.month, isNull);

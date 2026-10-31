@@ -19,6 +19,8 @@ class PeriodTotal {
       month == null ? DateTime(year + 1) : DateTime(year, month! + 1);
 }
 
+typedef StatementWithBalance = ({Statement statement, double? balance});
+
 class DatabaseService {
   // Singleton pattern
   DatabaseService._internal();
@@ -197,24 +199,56 @@ class DatabaseService {
   }
 
   /// Statements with a payment date in [start, end) that pass [filter],
-  /// newest first.
-  Stream<List<Statement>> watchStatementsBetween(
+  /// newest first, each with its account's balance right after it (null when
+  /// the account no longer exists).
+  Stream<List<StatementWithBalance>> watchStatementsBetween(
     DateTime start,
     DateTime end, {
     StatementFilter filter = const StatementFilter(),
   }) {
-    return (database.select(database.statements)
-          ..where(
-            (tbl) =>
-                tbl.paymentDate.isBiggerOrEqualValue(start) &
-                tbl.paymentDate.isSmallerThanValue(end) &
-                _matches(filter),
-          )
-          ..orderBy([
-            (tbl) => OrderingTerm.desc(tbl.paymentDate),
-            (tbl) => OrderingTerm.desc(tbl.id),
-          ]))
-        .watch();
+    final tbl = database.statements;
+    final later = database.alias(database.statements, 'later');
+    final accounts = database.accounts;
+    // Balance after a statement = current balance minus everything the account
+    // booked after it. Recent months have few later rows, so this stays cheap
+    // (uses the (account, payment_date) index), and it ignores the filter.
+    final laterSum = subqueryExpression<double>(
+      database.selectOnly(later)
+        ..addColumns([later.amount.sum()])
+        ..where(
+          later.account.equalsExp(tbl.account) &
+              (later.paymentDate.isBiggerThan(tbl.paymentDate) |
+                  (later.paymentDate.equalsExp(tbl.paymentDate) &
+                      later.id.isBiggerThan(tbl.id))),
+        ),
+    );
+    final balance =
+        subqueryExpression<double>(
+          database.selectOnly(accounts)
+            ..addColumns([accounts.balance])
+            ..where(accounts.id.equalsExp(tbl.account)),
+        ) -
+        coalesce([laterSum, const Constant(0.0)]);
+
+    final query =
+        (database.select(tbl)
+              ..where(
+                (tbl) =>
+                    tbl.paymentDate.isBiggerOrEqualValue(start) &
+                    tbl.paymentDate.isSmallerThanValue(end) &
+                    _matches(filter),
+              )
+              ..orderBy([
+                (tbl) => OrderingTerm.desc(tbl.paymentDate),
+                (tbl) => OrderingTerm.desc(tbl.id),
+              ]))
+            .addColumns([balance]);
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          (statement: row.readTable(tbl), balance: row.read(balance)),
+      ],
+    );
   }
 
   /// Totals per month (or per year when [yearly] is true) of the statements
