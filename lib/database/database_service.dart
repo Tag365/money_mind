@@ -68,8 +68,29 @@ class DatabaseService {
     return await database.select(database.accounts).get();
   }
 
+  /// Accounts with the balance as of now: statements dated in the future
+  /// (e.g. created ahead by a recurrence) are not counted yet.
   Stream<List<Account>> watchAccounts() {
-    return database.select(database.accounts).watch();
+    final accounts = database.accounts;
+    final future = database.statements;
+    // Only rechecked when a table changes, not when a future date passes.
+    final futureSum = subqueryExpression<double>(
+      database.selectOnly(future)
+        ..addColumns([future.amount.sum()])
+        ..where(
+          future.account.equalsExp(accounts.id) &
+              future.paymentDate.isBiggerThan(currentDateAndTime),
+        ),
+    );
+    final balance =
+        accounts.balance - coalesce([futureSum, const Constant(0.0)]);
+    final query = database.select(accounts).addColumns([balance]);
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          row.readTable(accounts).copyWith(balance: row.read(balance)),
+      ],
+    );
   }
 
   Future<Account> getAccountById(int id) async {
