@@ -45,6 +45,13 @@ class _ListState extends State<ListWidget> {
     super.dispose();
   }
 
+  void _setFilter(StatementFilter filter) {
+    setState(() {
+      _filter = filter;
+      _totals = databaseService.watchTotals(yearly: false, filter: filter);
+    });
+  }
+
   void _openFilter() async {
     final filter = await showModalBottomSheet<StatementFilter>(
       isScrollControlled: true,
@@ -52,16 +59,49 @@ class _ListState extends State<ListWidget> {
       context: context,
       builder: (context) => StatementFilterSheet(_filter, _accountNames),
     );
-    if (filter == null) return;
-    setState(() {
-      _filter = filter;
-      _totals = databaseService.watchTotals(yearly: false, filter: filter);
-    });
+    if (filter != null) _setFilter(filter);
+  }
+
+  /// One removable chip per active part of the filter.
+  Widget _activeFilters() {
+    final f = _filter;
+    Widget chip(String label, StatementFilter without) => Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InputChip(
+        label: Text(label),
+        onDeleted: () => _setFilter(without),
+      ),
+    );
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(
+        children: [
+          for (final id in f.accounts)
+            chip(
+              _accountNames[id] ?? '?',
+              f.copyWith(accounts: {...f.accounts}..remove(id)),
+            ),
+          for (final tag in f.tags)
+            chip(
+              f.excludeTags ? 'Not $tag' : tag,
+              f.copyWith(tags: {...f.tags}..remove(tag)),
+            ),
+          if (f.income != f.expense)
+            chip(
+              f.income ? 'Income' : 'Expense',
+              f.copyWith(income: false, expense: false),
+            ),
+          if (f.text.isNotEmpty) chip('"${f.text}"', f.copyWith(text: '')),
+        ],
+      ),
+    );
   }
 
   Widget _totalsList(List<PeriodTotal> totals) {
     final localizations = MaterialLocalizations.of(context);
     final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return ListView.builder(
       // Room for the filter button below the last row.
       padding: const EdgeInsets.only(bottom: 88),
@@ -81,7 +121,19 @@ class _ListState extends State<ListWidget> {
           collapsedShape: Border(bottom: BorderSide(color: colors.surface)),
           controlAffinity: ListTileControlAffinity.leading,
           title: Text(label),
-          subtitle: Text("${period.count} statements"),
+          subtitle: Row(
+            spacing: 8,
+            // Different font sizes, so align on the text baseline.
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text("${period.count} statements"),
+              if (period.income != 0)
+                MoneyText(period.income, style: textTheme.bodySmall),
+              if (period.expense != 0)
+                MoneyText(period.expense, style: textTheme.bodySmall),
+            ],
+          ),
           trailing: MoneyText(period.total),
           // Collapsed children are disposed, so only open periods are queried.
           children: [
@@ -110,7 +162,21 @@ class _ListState extends State<ListWidget> {
       return Center(child: CircularProgressIndicator());
     }
     if (asyncSnapshot.data!.isEmpty) {
-      return Center(child: Text("No statements found."));
+      if (!_filter.isActive) {
+        return Center(child: Text("No statements found."));
+      }
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("No statements match the filter."),
+            TextButton(
+              onPressed: () => _setFilter(const StatementFilter()),
+              child: const Text("Clear filter"),
+            ),
+          ],
+        ),
+      );
     }
     return builder(asyncSnapshot.data!);
   }
@@ -126,10 +192,17 @@ class _ListState extends State<ListWidget> {
           child: const Icon(Icons.filter_list),
         ),
       ),
-      body: StreamBuilder(
-        stream: _totals,
-        builder: (context, asyncSnapshot) =>
-            _snapshotView(asyncSnapshot, (data) => _totalsList(data)),
+      body: Column(
+        children: [
+          if (_filter.isActive) _activeFilters(),
+          Expanded(
+            child: StreamBuilder(
+              stream: _totals,
+              builder: (context, asyncSnapshot) =>
+                  _snapshotView(asyncSnapshot, (data) => _totalsList(data)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -148,21 +221,24 @@ class _StatementTile extends StatelessWidget {
     return ListTile(
       title: Text(statement.title, overflow: TextOverflow.ellipsis),
       isThreeLine: statement.tags.isNotEmpty,
-      subtitle: Text(
-        [
-          [
-            MaterialLocalizations.of(context).formatTimeOfDay(
-              TimeOfDay.fromDateTime(statement.paymentDate.toLocal()),
-              alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(
-                context,
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            [
+              MaterialLocalizations.of(context).formatTimeOfDay(
+                TimeOfDay.fromDateTime(statement.paymentDate.toLocal()),
+                alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(
+                  context,
+                ),
               ),
-            ),
-            ?accountNames[statement.account],
-          ].join(" · "),
-          if (statement.tags.isNotEmpty) statement.tags.join(", "),
-        ].join("\n"),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
+              ?accountNames[statement.account],
+            ].join(" · "),
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (statement.tags.isNotEmpty)
+            Text(statement.tags.join(", "), overflow: TextOverflow.ellipsis),
+        ],
       ),
       trailing: Column(
         mainAxisSize: MainAxisSize.min,

@@ -11,7 +11,18 @@ class PeriodTotal {
   final double total;
   final int count;
 
-  const PeriodTotal(this.year, this.month, this.total, this.count);
+  /// Sum of the positive amounts and of the negative amounts.
+  final double income;
+  final double expense;
+
+  const PeriodTotal(
+    this.year,
+    this.month,
+    this.total,
+    this.count,
+    this.income,
+    this.expense,
+  );
 
   /// Local-time bounds of the period, end exclusive.
   DateTime get start => DateTime(year, month ?? 1);
@@ -266,10 +277,12 @@ class DatabaseService {
     final month = localDate.month;
     final total = tbl.amount.sum();
     final count = tbl.id.count();
+    final income = tbl.amount.total(filter: tbl.amount.isBiggerOrEqualValue(0));
+    final expense = tbl.amount.total(filter: tbl.amount.isSmallerThanValue(0));
 
     final groupColumns = yearly ? [year] : [year, month];
     final query = database.selectOnly(tbl)
-      ..addColumns([...groupColumns, total, count])
+      ..addColumns([...groupColumns, total, count, income, expense])
       ..where(_matches(filter))
       ..groupBy(groupColumns)
       ..orderBy([for (final c in groupColumns) OrderingTerm.desc(c)]);
@@ -282,6 +295,8 @@ class DatabaseService {
             yearly ? null : row.read(month),
             row.read(total) ?? 0,
             row.read(count) ?? 0,
+            row.read(income)!,
+            row.read(expense)!,
           ),
       ],
     );

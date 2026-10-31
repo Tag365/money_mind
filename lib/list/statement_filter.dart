@@ -22,6 +22,21 @@ class StatementFilter {
     this.text = '',
   });
 
+  StatementFilter copyWith({
+    Set<int>? accounts,
+    Set<String>? tags,
+    bool? income,
+    bool? expense,
+    String? text,
+  }) => StatementFilter(
+    accounts: accounts ?? this.accounts,
+    tags: tags ?? this.tags,
+    excludeTags: excludeTags,
+    income: income ?? this.income,
+    expense: expense ?? this.expense,
+    text: text ?? this.text,
+  );
+
   bool get isActive =>
       accounts.isNotEmpty ||
       tags.isNotEmpty ||

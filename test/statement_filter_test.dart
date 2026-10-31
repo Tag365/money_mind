@@ -102,6 +102,13 @@ void main() {
     expect(await balances(const StatementFilter(tags: {'Ein'})), [-8]);
   });
 
+  test('monthly totals split income and expense', () async {
+    final month = (await service.watchTotals(yearly: false).first).single;
+    expect(month.income, 3010);
+    expect(month.expense, -8);
+    expect(month.total, 3002);
+  });
+
   test('monthly totals use the filter', () async {
     final totals = await service
         .watchTotals(yearly: false, filter: StatementFilter(accounts: {cash}))
