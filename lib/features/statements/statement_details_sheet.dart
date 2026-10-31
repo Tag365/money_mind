@@ -47,11 +47,18 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
   Future<void> _editRecurrence(Recurrence? recurrence) async {
     // The row may be stale: read the current link to the series.
     final statement = _statement.copyWith(recurrence: Value(recurrence?.id));
-    final latest = await DatabaseService.instance.latestInSeries(statement);
+    final service = DatabaseService.instance;
+    final latest = await service.latestInSeries(statement);
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (_) => RecurrenceDialog(statement, latest, recurrence),
+      builder: (_) => RecurrenceDialog(
+        from: latest.paymentDate,
+        recurrence: recurrence,
+        onSave: (unit, every, ahead) =>
+            service.setRecurrence(statement, unit, every, ahead: ahead),
+        onTurnOff: () => service.stopRecurrence(recurrence!.id),
+      ),
     );
   }
 

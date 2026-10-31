@@ -13,11 +13,18 @@ class AmountField extends StatelessWidget {
   /// Shown at the end of the field, opposite the € sign.
   final Widget? trailing;
 
+  final FocusNode? focusNode;
+
+  /// Called by the keyboard's Next key.
+  final VoidCallback? onNext;
+
   const AmountField({
     super.key,
     required this.controller,
     required this.color,
     this.trailing,
+    this.focusNode,
+    this.onNext,
   });
 
   /// "= 19,70 €" while [text] holds more than one charge, else null.
@@ -37,6 +44,9 @@ class AmountField extends StatelessWidget {
       children: [
         TextFormField(
           controller: controller,
+          focusNode: focusNode,
+          textInputAction: onNext == null ? null : TextInputAction.next,
+          onEditingComplete: onNext,
           textAlign: TextAlign.center,
           style: textTheme.displaySmall?.copyWith(
             color: color,

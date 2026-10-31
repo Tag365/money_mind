@@ -33,6 +33,12 @@ class _TabNavigationState extends State<TabNavigation> {
     super.dispose();
   }
 
+  void _select(int index) {
+    // A field focused in the tab left behind would keep the keyboard open.
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _index = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,16 +46,16 @@ class _TabNavigationState extends State<TabNavigation> {
       // IndexedStack keeps each tab (and its scroll position) alive.
       body: IndexedStack(
         index: _index,
-        children: const [
-          HomeWidget(),
-          AddWidget(),
-          ListWidget(),
-          AccountWidget(),
+        children: [
+          const HomeWidget(),
+          AddWidget(active: _index == 1),
+          const ListWidget(),
+          const AccountWidget(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
+        onDestinationSelected: _select,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
