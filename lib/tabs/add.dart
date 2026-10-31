@@ -144,11 +144,11 @@ class _AddWidgetState extends State<AddWidget> {
         // Drop selections whose tag was renamed or deleted in Manage tags.
         selectedTags.retainWhere((name) => tags.any((t) => t.name == name));
         return InkWell(
+          borderRadius: BorderRadius.circular(12),
           onTap: () => _selectTags(tags),
           child: InputDecorator(
             decoration: const InputDecoration(
               labelText: 'Tags',
-              border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.label_outline),
               suffixIcon: Icon(Icons.arrow_drop_down),
             ),
@@ -286,117 +286,156 @@ class _AddWidgetState extends State<AddWidget> {
           ),
         ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Column(
-              spacing: 20,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      // Same width for both labels.
-                      minimumSize: const Size(110, 40),
-                      backgroundColor: Colors.grey.shade200,
-                      foregroundColor: color,
-                    ),
-                    onPressed: () => setState(() => expense = !expense),
-                    child: Text(expense ? 'Expense' : 'Income'),
-                  ),
-                ),
-                Column(
-                  children: [
-                    TextFormField(
-                      controller: amountController,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: '0,00',
-                        border: InputBorder.none,
-                        prefixIcon: Icon(Icons.euro_sharp, color: color),
-                        suffixIcon: IconButton(
-                          tooltip: 'Add another charge',
-                          icon: const Icon(Icons.add),
-                          onPressed: () =>
-                              setState(() => amountController.text += ' + '),
-                        ),
-                      ),
-                      // signed: shows a minus key on the number keyboard.
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                        signed: true,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        final amount = evaluateAmount(value ?? '');
-                        if (amount == null || amount <= 0) {
-                          return 'Please enter a positive amount';
-                        }
-                        return null;
-                      },
-                    ),
-                    if (total != null)
-                      Text(
-                        total,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(color: color),
-                      ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: _pickDate,
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(date.toIso8601String().substring(0, 10)),
-                    ),
-                    TextButton.icon(
-                      onPressed: _pickTime,
-                      icon: const Icon(Icons.schedule),
-                      label: Text(
-                        MaterialLocalizations.of(context).formatTimeOfDay(
-                          TimeOfDay.fromDateTime(date),
-                          alwaysUse24HourFormat: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.account_balance_wallet_outlined),
-                    const SizedBox(width: 8),
-                    Expanded(child: _accountField()),
-                  ],
-                ),
-                TextFormField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.short_text),
-                  ),
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Please add a Title'
-                      : null,
-                ),
-                _tagsField(),
-                TextFormField(
-                  controller: noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Note',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.notes),
-                  ),
-                  maxLines: null,
-                ),
-              ],
+      // Filled fields without outline; a primary border marks focus.
+      body: Theme(
+        data: Theme.of(context).copyWith(
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            border: OutlineInputBorder(
+              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Column(
+                spacing: 20,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: FilledButton.tonal(
+                      style: FilledButton.styleFrom(
+                        // Same width for both labels.
+                        minimumSize: const Size(110, 40),
+                        backgroundColor: Colors.grey.shade200,
+                        foregroundColor: color,
+                      ),
+                      onPressed: () => setState(() => expense = !expense),
+                      child: Text(expense ? 'Expense' : 'Income'),
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      TextFormField(
+                        controller: amountController,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                        decoration: InputDecoration(
+                          hintText: '0,00',
+                          filled: false,
+                          border: InputBorder.none,
+                          prefixIcon: Icon(Icons.euro_sharp, color: color),
+                          suffixIcon: IconButton(
+                            tooltip: 'Add another charge',
+                            icon: const Icon(Icons.add),
+                            onPressed: () =>
+                                setState(() => amountController.text += ' + '),
+                          ),
+                        ),
+                        // signed: shows a minus key on the number keyboard.
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                          signed: true,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                        validator: (value) {
+                          final amount = evaluateAmount(value ?? '');
+                          if (amount == null || amount <= 0) {
+                            return 'Please enter a positive amount';
+                          }
+                          return null;
+                        },
+                      ),
+                      if (total != null)
+                        Text(
+                          total,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleMedium?.copyWith(color: color),
+                        ),
+                    ],
+                  ),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: _pickDate,
+                            icon: const Icon(Icons.calendar_today),
+                            label: Text(
+                              date.toIso8601String().substring(0, 10),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _pickTime,
+                            icon: const Icon(Icons.schedule),
+                            label: Text(
+                              MaterialLocalizations.of(context).formatTimeOfDay(
+                                TimeOfDay.fromDateTime(date),
+                                alwaysUse24HourFormat: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.account_balance_wallet_outlined),
+                          const SizedBox(width: 8),
+                          Expanded(child: _accountField()),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        spacing: 12,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: titleController,
+                            decoration: const InputDecoration(
+                              labelText: 'Title',
+                              prefixIcon: Icon(Icons.short_text),
+                            ),
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Please add a Title'
+                                : null,
+                          ),
+                          _tagsField(),
+                          TextFormField(
+                            controller: noteController,
+                            decoration: const InputDecoration(
+                              labelText: 'Note',
+                              prefixIcon: Icon(Icons.notes),
+                            ),
+                            maxLines: null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
