@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:money_mind/amount_expression.dart';
 import 'package:money_mind/components/tag_label.dart';
@@ -5,8 +6,12 @@ import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/screens/manage_tags.dart';
 
+/// Creates a statement, or edits [statement] when it is given. In edit mode it
+/// is meant to be pushed as its own page and pops with true after saving.
 class AddWidget extends StatefulWidget {
-  const AddWidget({super.key});
+  final Statement? statement;
+
+  const AddWidget({super.key, this.statement});
 
   @override
   State<AddWidget> createState() => _AddWidgetState();
@@ -26,6 +31,64 @@ class _AddWidgetState extends State<AddWidget> {
   int? accountId;
   bool expense = true;
   final Set<String> selectedTags = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.statement;
+    if (s == null) return;
+    titleController.text = s.title;
+    amountController.text = s.amount
+        .abs()
+        .toStringAsFixed(2)
+        .replaceAll('.', ',');
+    noteController.text = s.note;
+    date = s.paymentDate.toLocal();
+    accountId = s.account;
+    expense = s.amount < 0;
+    selectedTags.addAll(s.tags);
+  }
+
+  /// The amount as stored: negative for expenses, null while invalid.
+  double? _signedAmount() {
+    final amount = evaluateAmount(amountController.text);
+    if (amount == null) return null;
+    return expense ? -amount : amount;
+  }
+
+  bool get _hasChanges {
+    final s = widget.statement;
+    if (s == null) return false;
+    return titleController.text != s.title ||
+        noteController.text != s.note ||
+        _signedAmount() != s.amount ||
+        date != s.paymentDate.toLocal() ||
+        accountId != s.account ||
+        !setEquals(selectedTags, s.tags.toSet());
+  }
+
+  Future<void> _closeEdit() async {
+    final discard =
+        !_hasChanges ||
+        await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Discard changes?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Keep editing'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Discard'),
+                  ),
+                ],
+              ),
+            ) ==
+            true;
+    if (discard && mounted) Navigator.pop(context, false);
+  }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -87,6 +150,22 @@ class _AddWidgetState extends State<AddWidget> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || accountId == null) return;
+    final edited = widget.statement;
+    if (edited != null) {
+      // copyWith keeps the fields this form does not show (use date, ...).
+      await databaseService.updateStatement(
+        edited.copyWith(
+          title: titleController.text,
+          amount: _signedAmount(),
+          account: accountId,
+          paymentDate: date,
+          tags: selectedTags.toList(),
+          note: noteController.text,
+        ),
+      );
+      if (mounted) Navigator.pop(context, true);
+      return;
+    }
     final double amount = evaluateAmount(amountController.text)!;
     await databaseService.addStatement(
       titleController.text,
@@ -142,8 +221,15 @@ class _AddWidgetState extends State<AddWidget> {
       stream: _tags,
       builder: (context, snapshot) {
         final tags = snapshot.data ?? [];
-        // Drop selections whose tag was renamed or deleted in Manage tags.
-        selectedTags.retainWhere((name) => tags.any((t) => t.name == name));
+        final original = widget.statement?.tags ?? const [];
+        // Drop selections whose tag was renamed or deleted in Manage tags,
+        // but keep the edited statement's own tags even if not in the table.
+        selectedTags.retainWhere(
+          (name) => tags.any((t) => t.name == name) || original.contains(name),
+        );
+        final unknown = selectedTags.where(
+          (name) => !tags.any((t) => t.name == name),
+        );
         return InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () => _selectTags(tags),
@@ -160,6 +246,11 @@ class _AddWidgetState extends State<AddWidget> {
               children: [
                 for (final tag in tags)
                   if (selectedTags.contains(tag.name)) _tagLabel(tag),
+                for (final name in unknown)
+                  TagLabel(
+                    name,
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ),
               ],
             ),
           ),
@@ -239,7 +330,20 @@ class _AddWidgetState extends State<AddWidget> {
     // Same colors as MoneyText.
     final color = expense ? Colors.red.shade400 : Colors.green.shade600;
     final total = _amountTotal();
+    final editing = widget.statement != null;
+    // Back, the close button and Cancel all ask before dropping changes.
+    return PopScope(
+      canPop: !editing,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeEdit();
+      },
+      child: _form(context, color, total, editing),
+    );
+  }
+
+  Widget _form(BuildContext context, Color color, String? total, bool editing) {
     return Scaffold(
+      appBar: editing ? AppBar(title: const Text('Edit statement')) : null,
       // Pinned above the keyboard and the tab bar.
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -252,8 +356,8 @@ class _AddWidgetState extends State<AddWidget> {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                   ),
-                  onPressed: _clear,
-                  child: const Text('Clear'),
+                  onPressed: editing ? _closeEdit : _clear,
+                  child: Text(editing ? 'Cancel' : 'Clear'),
                 ),
               ),
               Expanded(
@@ -265,7 +369,7 @@ class _AddWidgetState extends State<AddWidget> {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: _save,
-                  child: const Text('Save'),
+                  child: Text(editing ? 'Save changes' : 'Save'),
                 ),
               ),
             ],

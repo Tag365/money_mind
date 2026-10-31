@@ -4,6 +4,7 @@ import 'package:money_mind/components/money_text.dart';
 import 'package:money_mind/components/tag_label.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
+import 'package:money_mind/tabs/add.dart';
 
 /// Shows all information of one statement, with edit and delete actions.
 class StatementDetailsSheet extends StatefulWidget {
@@ -30,6 +31,24 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
       child: value,
     ),
   );
+
+  /// Closes the sheet and opens the Create form in edit mode as its own page.
+  Future<void> _edit() async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    navigator.pop();
+    final saved = await navigator.push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => AddWidget(statement: _statement),
+      ),
+    );
+    if (saved == true) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Statement updated')),
+      );
+    }
+  }
 
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
@@ -147,8 +166,7 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  // Editing is not designed yet.
-                  onPressed: null,
+                  onPressed: _edit,
                   icon: const Icon(Icons.edit_outlined),
                   label: const Text('Edit'),
                 ),
