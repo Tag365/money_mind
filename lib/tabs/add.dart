@@ -213,7 +213,7 @@ class _AddWidgetState extends State<AddWidget> {
             if (!a.closed || a.id == widget.statement?.account) a,
         ];
         if (accounts.isEmpty) {
-          return const Text('Create an account first.');
+          return const Text('No open account. Add one in Accounts.');
         }
         if (!accounts.any((a) => a.id == accountId)) {
           accountId = accounts.first.id;

@@ -60,15 +60,10 @@ class DatabaseService {
   /// new statements, so the series that would add some stop.
   Future<void> closeAccount(Account account) async {
     await database.transaction(() async {
-      for (final r in await database.select(database.recurrences).get()) {
-        // New occurrences copy the newest statement, so it decides the account.
-        if ((await _latestOf(r.id))?.account == account.id) {
-          await stopRecurrence(r.id);
-        }
-      }
       await (database.update(database.accounts)
             ..where((tbl) => tbl.id.equals(account.id)))
           .write(const AccountsCompanion(closed: Value(true)));
+      await addDueRecurrences();
     });
   }
 
@@ -444,7 +439,7 @@ class DatabaseService {
   }
 
   /// Creates every occurrence due by [at] (default: now), copying the newest
-  /// statement of each series. Series with `ahead` also get the next
+  /// statement of each series. Series whose account is closed or gone stop. Series with `ahead` also get the next
   /// occurrence within a month, but never more than one upcoming statement.
   /// Safe to call any number of times: each occurrence is created once.
   Future<void> addDueRecurrences({DateTime? at}) async {
@@ -458,6 +453,14 @@ class DatabaseService {
           await (database.delete(
             database.recurrences,
           )..where((tbl) => tbl.id.equals(r.id))).go();
+          continue;
+        }
+        final account = await (database.select(
+          database.accounts,
+        )..where((tbl) => tbl.id.equals(template.account))).getSingleOrNull();
+        if (account == null || account.closed) {
+          // Closed, or deleted before accounts could be closed.
+          await stopRecurrence(r.id);
           continue;
         }
         final monthAhead = DateTime(

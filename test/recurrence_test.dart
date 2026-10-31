@@ -148,6 +148,22 @@ void main() {
     await db.close();
   });
 
+  test('a statement of a closed account cannot start a series', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final service = DatabaseService.instance..database = db;
+    final bank = await service.addAccount('Bank', AccountType.debit);
+    final paid = DateTime(2026, 8, 15, 8);
+    await service.addStatement('Rent', -800, bank, paid, paid, [], '');
+    await service.closeAccount(await service.getAccountById(bank));
+    final rent = (await db.select(db.statements).get()).single;
+
+    await service.setRecurrence(rent, RecurrenceUnit.month, 1);
+
+    expect(await db.select(db.statements).get(), hasLength(1));
+    expect(await db.select(db.recurrences).get(), isEmpty);
+    await db.close();
+  });
+
   test('ahead creates only one upcoming statement', () async {
     final db = AppDatabase(NativeDatabase.memory());
     final service = DatabaseService.instance..database = db;

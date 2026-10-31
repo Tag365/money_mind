@@ -51,8 +51,13 @@ class _RecurrenceDialogState extends State<RecurrenceDialog> {
     return _unit.occurrence(widget.latest.paymentDate, every, 1);
   }
 
+  // Set for good: the dialog closes after saving. A second tap would pass the
+  // stale statement again and start a second series.
+  bool _saving = false;
+
   Future<void> _save() async {
     final navigator = Navigator.of(context);
+    setState(() => _saving = true);
     await DatabaseService.instance.setRecurrence(
       widget.statement,
       _unit,
@@ -64,6 +69,7 @@ class _RecurrenceDialogState extends State<RecurrenceDialog> {
 
   Future<void> _turnOff() async {
     final navigator = Navigator.of(context);
+    setState(() => _saving = true);
     await DatabaseService.instance.stopRecurrence(widget.recurrence!.id);
     navigator.pop();
   }
@@ -131,13 +137,16 @@ class _RecurrenceDialogState extends State<RecurrenceDialog> {
       ),
       actions: [
         if (widget.recurrence != null)
-          TextButton(onPressed: _turnOff, child: const Text('Turn off')),
+          TextButton(
+            onPressed: _saving ? null : _turnOff,
+            child: const Text('Turn off'),
+          ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: every == null ? null : _save,
+          onPressed: every == null || _saving ? null : _save,
           child: const Text('OK'),
         ),
       ],
