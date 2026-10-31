@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 /// Colors for income and expenses, used everywhere an amount is shown.
-final Color incomeColor = Colors.green.shade600;
-final Color expenseColor = Colors.red.shade400;
+/// Muted, so they read on both the light and the dark theme.
+const Color incomeColor = Color(0xFF6B9E7D);
+const Color expenseColor = Color(0xFFC86B67);
 
 /// "1.234,50 €", German style like the amount input. Rounds to cents first,
 /// so float drift never shows "-0,00 €".
