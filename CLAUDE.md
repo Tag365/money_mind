@@ -34,4 +34,6 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 
 ## CI
 
-`.github/workflows/build-apk.yml` builds a release APK (Flutter 3.47.9, Java 17) on pushes to `master`, PRs, and manual dispatch, and uploads it as the `money_mind-apk` artifact. Release builds are still signed with debug keys (`android/app/build.gradle.kts`).
+`.github/workflows/checks.yml` runs on PRs only: `dart format --set-exit-if-changed lib test` and `flutter analyze --no-fatal-infos`.
+
+`.github/workflows/build-apk.yml` runs `flutter test`, then builds a release APK (Flutter 3.47.9, Java 17) on pushes to `master`, PRs, and manual dispatch, and uploads it as the `money_mind-apk` artifact. Release builds are still signed with debug keys (`android/app/build.gradle.kts`).

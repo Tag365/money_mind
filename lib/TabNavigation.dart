@@ -11,7 +11,11 @@ class TabNavigation extends StatefulWidget {
 }
 
 class _TabNavigationState extends State<TabNavigation> {
-  static const List<String> _titles = ["Statement Form", "Statements", "Accounts"];
+  static const List<String> _titles = [
+    "Statement Form",
+    "Statements",
+    "Accounts",
+  ];
 
   int _index = 1;
 
