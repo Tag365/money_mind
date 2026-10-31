@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/database/models/account_type.dart';
 import 'package:money_mind/database/models/list_converter.dart';
 import 'package:money_mind/database/models/recurrences.dart';
 import 'package:money_mind/database/migrations/v2.dart';

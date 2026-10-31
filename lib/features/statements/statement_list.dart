@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:money_mind/components/money_text.dart';
+import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/app_database.dart';
-import 'package:money_mind/list/grouping.dart';
-import 'package:money_mind/list/statement_filter.dart';
-import 'package:money_mind/modals/statement_details_sheet.dart';
-import 'package:money_mind/modals/statement_filter_sheet.dart';
+import 'package:money_mind/features/statements/grouping.dart';
+import 'package:money_mind/features/statements/statement_filter.dart';
+import 'package:money_mind/features/statements/statement_details_sheet.dart';
+import 'package:money_mind/features/statements/statement_filter_sheet.dart';
 
 class ListWidget extends StatefulWidget {
   const ListWidget({super.key});

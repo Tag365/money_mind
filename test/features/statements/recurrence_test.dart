@@ -3,7 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/database/models/account_type.dart';
 import 'package:money_mind/database/models/recurrences.dart';
 
 void main() {

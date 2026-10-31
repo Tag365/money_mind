@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
-import 'package:money_mind/amount_expression.dart';
-import 'package:money_mind/components/tag_label.dart';
+import 'package:money_mind/common/amount_expression.dart';
+import 'package:money_mind/features/tags/tag_label.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/screens/manage_tags.dart';
+import 'package:money_mind/features/tags/manage_tags.dart';
 
 /// Creates a statement, or edits [statement] when it is given. In edit mode it
 /// is meant to be pushed as its own page and pops with true after saving.

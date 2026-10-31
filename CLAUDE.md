@@ -11,7 +11,7 @@ flutter pub get
 flutter run
 flutter analyze                                  # lints: package:flutter_lints
 flutter test                                     # all tests
-flutter test test/add_widget_test.dart           # single file
+flutter test test/features/statements/add_widget_test.dart   # single file
 flutter test --plain-name "<test name>"          # single test
 dart run build_runner build --delete-conflicting-outputs   # regenerate Drift code
 flutter build apk --release
@@ -25,7 +25,8 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 
 ## Architecture
 
-- **UI**: `main.dart` → `TabNavigation.dart`, a `NavigationBar` + `IndexedStack` over three tabs in `lib/tabs/` (Add, Statements, Accounts). Modals live in `lib/modals/`, shared widgets in `lib/components/`. State is plain `StatefulWidget` + `StreamBuilder`; there is no state-management package.
+- **Layout**: feature-first. `lib/features/{statements,accounts,tags}/` hold each feature's tabs, forms, sheets and dialogs; `lib/common/` holds code shared by several features (`MoneyText`/`formatMoney`, `evaluateAmount`); `lib/database/` is shared by all features. `test/` mirrors `lib/`.
+- **UI**: `main.dart` → `app/tab_navigation.dart`, a `NavigationBar` + `IndexedStack` over three tabs: `AddWidget` (`statements/add_statement.dart`), `ListWidget` (`statements/statement_list.dart`), `AccountWidget` (`accounts/accounts_tab.dart`). State is plain `StatefulWidget` + `StreamBuilder`; there is no state-management package.
 - **Data access**: all DB access goes through the `DatabaseService.instance` singleton (`lib/database/database_service.dart`), which lazily creates `AppDatabase`. Widgets subscribe to Drift `watch...()` streams, so writes refresh the UI automatically, with no manual reloads.
 - **Schema** (`lib/database/app_database.dart`): tables `Statements`, `Accounts`, `Tags`, `Recurrences`. `schemaVersion` is 6. For a schema change, bump it and add `lib/database/migrations/v<N>.dart` with a `migrateToV<N>` function, called from `onUpgrade`; add columns with `addColumnIfMissing` (`migrations/add_column.dart`), since a cut-short upgrade may run again. Indexes on `payment_date` / `(account, payment_date)` are created via raw SQL in `migrations/v2.dart`, which `onCreate` also runs. The DB file lives in the app support directory.
 - **Invariants**:
