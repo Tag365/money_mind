@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:money_mind/database/app_database.dart';
-import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/database/models/account_type.dart';
 import 'package:money_mind/database/models/recurrences.dart';
-import 'package:money_mind/list/statement_filter.dart';
+import 'package:money_mind/features/statements/statement_filter.dart';
 
 /// Sum of all statements in one month (or one year when [month] is null).
 class PeriodTotal {

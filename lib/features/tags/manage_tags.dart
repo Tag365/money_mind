@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:money_mind/components/tag_color_picker.dart';
+import 'package:money_mind/features/tags/tag_color_picker.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 

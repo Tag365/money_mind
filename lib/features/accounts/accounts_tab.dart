@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:money_mind/components/money_text.dart';
+import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/database/models/AccountType.dart';
-import 'package:money_mind/modals/account_form.dart';
-import 'package:money_mind/modals/transfer_form.dart';
+import 'package:money_mind/database/models/account_type.dart';
+import 'package:money_mind/features/accounts/account_form.dart';
+import 'package:money_mind/features/accounts/transfer_form.dart';
 
 import 'package:money_mind/database/app_database.dart';
 

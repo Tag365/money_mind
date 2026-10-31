@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/list/statement_filter.dart';
+import 'package:money_mind/features/statements/statement_filter.dart';
 
 /// Edits a [StatementFilter]. Pops with the new filter, or null when
 /// dismissed.

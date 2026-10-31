@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:money_mind/components/money_text.dart';
+import 'package:money_mind/common/money_text.dart';
 
 void main() {
   test('float drift around zero shows as 0.00', () {

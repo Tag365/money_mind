@@ -1,12 +1,12 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
-import 'package:money_mind/components/money_text.dart';
-import 'package:money_mind/components/tag_label.dart';
+import 'package:money_mind/common/money_text.dart';
+import 'package:money_mind/features/tags/tag_label.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/modals/recurrence_dialog.dart';
-import 'package:money_mind/tabs/add.dart';
+import 'package:money_mind/features/statements/recurrence_dialog.dart';
+import 'package:money_mind/features/statements/add_statement.dart';
 
 /// Shows all information of one statement, with edit and delete actions.
 class StatementDetailsSheet extends StatefulWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:money_mind/amount_expression.dart';
+import 'package:money_mind/common/amount_expression.dart';
 
 void main() {
   test('single amounts', () {

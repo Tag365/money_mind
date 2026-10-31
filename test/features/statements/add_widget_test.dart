@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/database/models/AccountType.dart';
-import 'package:money_mind/tabs/add.dart';
+import 'package:money_mind/database/models/account_type.dart';
+import 'package:money_mind/features/statements/add_statement.dart';
 
 void main() {
   final service = DatabaseService.instance;

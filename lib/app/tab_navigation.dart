@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/tabs/add.dart';
-import 'package:money_mind/tabs/list.dart';
-import 'package:money_mind/tabs/account.dart';
+import 'package:money_mind/features/statements/add_statement.dart';
+import 'package:money_mind/features/statements/statement_list.dart';
+import 'package:money_mind/features/accounts/accounts_tab.dart';
 
 class TabNavigation extends StatefulWidget {
   const TabNavigation({super.key});

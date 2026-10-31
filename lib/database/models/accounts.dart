@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:money_mind/database/models/AccountType.dart';
+import 'package:money_mind/database/models/account_type.dart';
 
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();

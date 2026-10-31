@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:money_mind/TabNavigation.dart';
+import 'package:money_mind/app/tab_navigation.dart';
 
 void main() {
   runApp(const MoneyMind());
