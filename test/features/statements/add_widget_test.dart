@@ -57,7 +57,7 @@ void main() {
   testWidgets('saves a summed expense and updates the balance', (tester) async {
     await openForm(tester);
     await enterStatement(tester, amount: '12,50 + 3');
-    expect(find.text('= 15.50'), findsOneWidget);
+    expect(find.text('= 15,50 €'), findsOneWidget);
 
     await save(tester);
 

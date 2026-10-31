@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:money_mind/common/amount_expression.dart';
+import 'package:money_mind/common/money_text.dart';
 
 /// Big centered amount input. Accepts sums like "12,50 + 3" and shows the
-/// result ("= 15.50") below while it holds more than one charge.
+/// result ("= 15,50 €") below while it holds more than one charge.
 class AmountField extends StatelessWidget {
   final TextEditingController controller;
 
@@ -11,14 +12,14 @@ class AmountField extends StatelessWidget {
 
   const AmountField({super.key, required this.controller, required this.color});
 
-  /// "= 19.70" while [text] holds more than one charge, else null.
+  /// "= 19,70 €" while [text] holds more than one charge, else null.
   static String? _total(String text) {
     text = text.trim();
     if (!text.substring(text.isEmpty ? 0 : 1).contains(RegExp('[+-]'))) {
       return null;
     }
     final total = evaluateAmount(text);
-    return total == null ? null : '= ${total.toStringAsFixed(2)}';
+    return total == null ? null : '= ${formatMoney(total)}';
   }
 
   @override

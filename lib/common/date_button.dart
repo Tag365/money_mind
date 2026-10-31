@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Shows the day of [date] (2026-10-31) and opens a date picker. Only the
+/// Shows the day of [date] (Oct 31, 2026) and opens a date picker. Only the
 /// calendar day changes; the time of day is kept.
 class DateButton extends StatelessWidget {
   final DateTime date;
@@ -26,7 +26,7 @@ class DateButton extends StatelessWidget {
     return TextButton.icon(
       onPressed: () => _pick(context),
       icon: const Icon(Icons.calendar_today),
-      label: Text(date.toIso8601String().substring(0, 10)),
+      label: Text(MaterialLocalizations.of(context).formatShortDate(date)),
     );
   }
 }

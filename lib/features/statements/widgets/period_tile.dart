@@ -23,43 +23,48 @@ class PeriodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final now = DateTime.now();
-    return ExpansionTile(
-      initiallyExpanded: period.start == DateTime(now.year, now.month),
-      backgroundColor: colors.surfaceContainerHigh,
-      collapsedBackgroundColor: colors.surfaceContainerHigh,
-      shape: const Border(),
-      collapsedShape: Border(bottom: BorderSide(color: colors.surface)),
-      controlAffinity: ListTileControlAffinity.leading,
-      title: Text(
-        MaterialLocalizations.of(context).formatMonthYear(period.start),
-      ),
-      subtitle: Row(
-        spacing: 8,
-        // Different font sizes, so align on the text baseline.
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
+    // A card like the account tiles; the open month's days are inside it.
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: period.start == DateTime(now.year, now.month),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        controlAffinity: ListTileControlAffinity.leading,
+        title: Text(
+          MaterialLocalizations.of(context).formatMonthYear(period.start),
+        ),
+        // Count and amounts on their own lines, so every month has the same
+        // shape and the amounts never squeeze the count.
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("${period.count} statement${period.count == 1 ? '' : 's'}"),
+            Row(
+              spacing: 12,
+              children: [
+                if (period.income != 0)
+                  MoneyText(period.income, style: textTheme.bodySmall),
+                if (period.expense != 0)
+                  MoneyText(period.expense, style: textTheme.bodySmall),
+              ],
+            ),
+          ],
+        ),
+        trailing: MoneyText(period.total),
+        // Collapsed children are disposed, so only open periods are queried.
         children: [
-          Text("${period.count} statements"),
-          if (period.income != 0)
-            MoneyText(period.income, style: textTheme.bodySmall),
-          if (period.expense != 0)
-            MoneyText(period.expense, style: textTheme.bodySmall),
+          PeriodStatements(
+            period,
+            accountNames,
+            filter,
+            // A new filter needs a new query.
+            key: ValueKey(filter),
+          ),
         ],
       ),
-      trailing: MoneyText(period.total),
-      // Collapsed children are disposed, so only open periods are queried.
-      children: [
-        PeriodStatements(
-          period,
-          accountNames,
-          filter,
-          // A new filter needs a new query.
-          key: ValueKey(filter),
-        ),
-      ],
     );
   }
 }

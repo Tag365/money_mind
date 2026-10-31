@@ -29,10 +29,10 @@ void main() {
     await show(tester);
 
     await type(tester, '12,50 + 3');
-    expect(find.text('= 15.50'), findsOneWidget);
+    expect(find.text('= 15,50 €'), findsOneWidget);
 
     await type(tester, '-4 - 1');
-    expect(find.text('= -5.00'), findsOneWidget);
+    expect(find.text('= -5,00 €'), findsOneWidget);
 
     await type(tester, '12,50');
     expect(find.textContaining('='), findsNothing);

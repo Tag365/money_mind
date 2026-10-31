@@ -48,10 +48,7 @@ class _TransferFormState extends State<TransferForm> {
   ) {
     return DropdownButtonFormField<int>(
       initialValue: value.id,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: InputDecoration(labelText: label),
       items: [
         for (final a in widget.accounts)
           DropdownMenuItem(value: a.id, child: Text(a.name)),
@@ -87,7 +84,6 @@ class _TransferFormState extends State<TransferForm> {
               autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Amount',
-                border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.euro_sharp),
               ),
               keyboardType: const TextInputType.numberWithOptions(

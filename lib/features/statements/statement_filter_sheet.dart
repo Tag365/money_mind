@@ -115,7 +115,6 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
             controller: _text,
             decoration: const InputDecoration(
               labelText: 'Search title and note',
-              border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.search),
             ),
           ),

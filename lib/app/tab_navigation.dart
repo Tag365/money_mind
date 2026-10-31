@@ -12,12 +12,6 @@ class TabNavigation extends StatefulWidget {
 }
 
 class _TabNavigationState extends State<TabNavigation> {
-  static const List<String> _titles = [
-    "Statement Form",
-    "Statements",
-    "Accounts",
-  ];
-
   int _index = 1;
 
   // Recurring statements fall due while the app is closed or in background.
@@ -41,7 +35,7 @@ class _TabNavigationState extends State<TabNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_index])),
+      // Each tab has its own app bar, with that tab's secondary actions.
       // IndexedStack keeps each tab (and its scroll position) alive.
       body: IndexedStack(
         index: _index,
