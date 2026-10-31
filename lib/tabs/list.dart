@@ -116,10 +116,8 @@ class _ListState extends State<ListWidget> {
     if (totals != null) {
       return StreamBuilder(
         stream: totals,
-        builder: (context, asyncSnapshot) => _snapshotView(
-          asyncSnapshot,
-          (data) => _totalsList(data),
-        ),
+        builder: (context, asyncSnapshot) =>
+            _snapshotView(asyncSnapshot, (data) => _totalsList(data)),
       );
     }
     return StreamBuilder(
@@ -160,7 +158,10 @@ class _ListState extends State<ListWidget> {
                 showSelectedIcon: false,
                 segments: [
                   for (final option in GroupingOption.values)
-                    ButtonSegment(value: option, label: Text(option.displayName)),
+                    ButtonSegment(
+                      value: option,
+                      label: Text(option.displayName),
+                    ),
                 ],
                 selected: {selectedGrouping ?? GroupingOption.none},
                 onSelectionChanged: (selection) =>
