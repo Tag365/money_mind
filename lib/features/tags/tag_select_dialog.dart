@@ -25,7 +25,12 @@ class _TagSelectDialogState extends State<TagSelectDialog> {
   void _manageTags() {
     final navigator = Navigator.of(context);
     navigator.pop();
-    navigator.push(MaterialPageRoute(builder: (_) => const ManageTagsScreen()));
+    showModalBottomSheet(
+      isScrollControlled: true,
+      showDragHandle: true,
+      context: navigator.context,
+      builder: (_) => const ManageTagsSheet(),
+    );
   }
 
   @override

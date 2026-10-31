@@ -80,40 +80,53 @@ class _AccountState extends State<AccountWidget> {
     print("Inserted 36500 statements in ${stopwatch.elapsedMilliseconds} ms");
   }
 
-  Widget _actions(List<Account> accounts) {
+  List<Widget> _actions(List<Account> accounts) {
     final open = accounts.where((a) => !a.closed).toList();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      spacing: 12,
-      children: [
-        // Dev tool: only offered when there is an account to fill.
-        if (kDebugMode && open.isNotEmpty)
-          FloatingActionButton.small(
-            heroTag: "speedtest",
-            tooltip: "Insert speedtest statements",
-            onPressed: () => _insertSpeedtestStatements(open.first),
-            child: const Icon(Icons.speed),
-          ),
-        if (open.length >= 2)
-          FloatingActionButton.extended(
-            heroTag: "transfer",
-            onPressed: () => showModalBottomSheet(
-              isScrollControlled: true,
-              showDragHandle: true,
-              context: context,
-              builder: (context) => TransferForm(accounts: open),
-            ),
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text("Transfer"),
-          ),
-        FloatingActionButton.extended(
-          heroTag: "add",
-          onPressed: _openAddAccountModal,
-          icon: const Icon(Icons.add),
-          label: const Text("Add account"),
+    return [
+      // Dev tool: only offered when there is an account to fill.
+      if (kDebugMode && open.isNotEmpty)
+        IconButton(
+          tooltip: "Insert speedtest statements",
+          onPressed: () => _insertSpeedtestStatements(open.first),
+          icon: const Icon(Icons.speed),
         ),
-      ],
+      if (open.length >= 2)
+        IconButton(
+          tooltip: "Transfer",
+          onPressed: () => showModalBottomSheet(
+            isScrollControlled: true,
+            showDragHandle: true,
+            context: context,
+            builder: (context) => TransferForm(accounts: open),
+          ),
+          icon: const Icon(Icons.swap_horiz),
+        ),
+      IconButton(
+        tooltip: "Add account",
+        onPressed: _openAddAccountModal,
+        icon: const Icon(Icons.add),
+      ),
+    ];
+  }
+
+  Widget _body(AsyncSnapshot<List<Account>> asyncSnapshot) {
+    if (asyncSnapshot.hasError) {
+      return Center(child: Text('Error: ${asyncSnapshot.error}'));
+    }
+    if (!asyncSnapshot.hasData) {
+      // Show a placeholder while loading
+      return Center(child: CircularProgressIndicator());
+    }
+    final accounts = asyncSnapshot.data!;
+    if (accounts.isEmpty) return NoAccountsHint(onAdd: _openAddAccountModal);
+    return SlidableAutoCloseBehavior(
+      child: ListView(
+        children: [
+          TotalBalanceCard(accounts),
+          for (final account in accounts)
+            AccountTile(account, onClose: () => _closeAccount(account)),
+        ],
+      ),
     );
   }
 
@@ -121,36 +134,13 @@ class _AccountState extends State<AccountWidget> {
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: _accounts,
-      builder: (context, asyncSnapshot) {
-        if (asyncSnapshot.hasError) {
-          return Center(child: Text('Error: ${asyncSnapshot.error}'));
-        }
-        if (!asyncSnapshot.hasData) {
-          // Show a placeholder while loading
-          return Center(child: CircularProgressIndicator());
-        }
-        final accounts = asyncSnapshot.data!;
-        return Scaffold(
-          body: accounts.isEmpty
-              ? const NoAccountsHint()
-              : SlidableAutoCloseBehavior(
-                  child: ListView(
-                    // Leave room so the last card isn't hidden behind the
-                    // buttons.
-                    padding: const EdgeInsets.only(bottom: 140),
-                    children: [
-                      TotalBalanceCard(accounts),
-                      for (final account in accounts)
-                        AccountTile(
-                          account,
-                          onClose: () => _closeAccount(account),
-                        ),
-                    ],
-                  ),
-                ),
-          floatingActionButton: _actions(accounts),
-        );
-      },
+      builder: (context, asyncSnapshot) => Scaffold(
+        appBar: AppBar(
+          title: const Text("Accounts"),
+          actions: _actions(asyncSnapshot.data ?? []),
+        ),
+        body: _body(asyncSnapshot),
+      ),
     );
   }
 }

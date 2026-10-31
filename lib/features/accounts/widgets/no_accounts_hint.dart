@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Shown on the Accounts tab before the first account exists.
+/// Shown on the Accounts tab before the first account exists, with a big
+/// button since the app bar's add icon is easy to miss there.
 class NoAccountsHint extends StatelessWidget {
-  const NoAccountsHint({super.key});
+  final VoidCallback onAdd;
+
+  const NoAccountsHint({super.key, required this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +20,12 @@ class NoAccountsHint extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text("No accounts yet"),
-          const SizedBox(height: 4),
-          const Text("Tap \"Add account\" to create your first one."),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: const Text("Add account"),
+          ),
         ],
       ),
     );

@@ -9,18 +9,32 @@ class MoneyMind extends StatelessWidget {
   const MoneyMind({super.key});
 
   static ThemeData _theme(Brightness brightness) {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.teal,
-        brightness: brightness,
+    final colors = ColorScheme.fromSeed(
+      seedColor: Colors.white10,
+      dynamicSchemeVariant: DynamicSchemeVariant.neutral,
+      brightness: brightness,
+    );
+    // Filled fields without outline; a primary border marks focus.
+    final inputs = InputDecorationTheme(
+      filled: true,
+      border: OutlineInputBorder(
+        borderSide: BorderSide.none,
+        borderRadius: BorderRadius.circular(12),
       ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: colors.primary, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
+    return ThemeData(
+      colorScheme: colors,
       cardTheme: const CardThemeData(
         elevation: 0,
         margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-      ),
+      inputDecorationTheme: inputs,
+      // DropdownMenu ignores inputDecorationTheme.
+      dropdownMenuTheme: DropdownMenuThemeData(inputDecorationTheme: inputs),
     );
   }
 

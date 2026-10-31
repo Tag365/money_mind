@@ -15,7 +15,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text('2026-10-31'), findsOneWidget);
+    expect(find.text('Oct 31, 2026'), findsOneWidget);
 
     await tester.tap(find.byType(DateButton));
     await tester.pumpAndSettle();

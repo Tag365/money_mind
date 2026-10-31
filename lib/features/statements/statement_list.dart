@@ -96,13 +96,18 @@ class _ListState extends State<ListWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Filter',
-        onPressed: _openFilter,
-        child: Badge(
-          isLabelVisible: _filter.isActive,
-          child: const Icon(Icons.filter_list),
-        ),
+      appBar: AppBar(
+        title: const Text('Statements'),
+        actions: [
+          IconButton(
+            tooltip: 'Filter',
+            onPressed: _openFilter,
+            icon: Badge(
+              isLabelVisible: _filter.isActive,
+              child: const Icon(Icons.filter_list),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -118,8 +123,7 @@ class _ListState extends State<ListWidget> {
               builder: (context, asyncSnapshot) => _snapshotView(
                 asyncSnapshot,
                 (totals) => ListView.builder(
-                  // Room for the filter button below the last row.
-                  padding: const EdgeInsets.only(bottom: 88),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: totals.length,
                   itemBuilder: (context, index) => PeriodTile(
                     // Keeps a period open when the totals stream emits again.

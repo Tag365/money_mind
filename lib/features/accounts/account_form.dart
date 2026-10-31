@@ -84,7 +84,6 @@ class _AccountFormState extends State<AccountForm> {
                             controller: accountNameController,
                             decoration: InputDecoration(
                               labelText: 'Account name',
-                              border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.account_box),
                             ),
                             validator: (value) {
@@ -98,7 +97,6 @@ class _AccountFormState extends State<AccountForm> {
                             controller: balanceController,
                             decoration: InputDecoration(
                               labelText: "Initial balance",
-                              border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.euro_sharp),
                             ),
                             inputFormatters: <TextInputFormatter>[
@@ -120,6 +118,7 @@ class _AccountFormState extends State<AccountForm> {
                           SizedBox(
                             width: double.infinity,
                             child: DropdownMenu(
+                              expandedInsets: EdgeInsets.zero,
                               label: Text('Account type'),
                               initialSelection: AccountType.debit,
                               dropdownMenuEntries: AccountType.entries,

@@ -44,7 +44,7 @@ class _PeriodStatementsState extends State<PeriodStatements> {
           children: [
             for (final day in groupByDay(snapshot.data!))
               DayGroupView(day, widget.accountNames),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
           ],
         );
       },

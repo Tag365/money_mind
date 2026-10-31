@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:money_mind/common/amount_expression.dart';
 import 'package:money_mind/common/date_button.dart';
+import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/common/time_button.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
@@ -223,8 +224,7 @@ class _AddWidgetState extends State<AddWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Same colors as MoneyText.
-    final color = expense ? Colors.red.shade400 : Colors.green.shade600;
+    final color = expense ? expenseColor : incomeColor;
     final editing = widget.statement != null;
     // Back, the close button and Cancel all ask before dropping changes.
     return PopScope(
@@ -238,7 +238,7 @@ class _AddWidgetState extends State<AddWidget> {
 
   Widget _form(BuildContext context, Color color, bool editing) {
     return Scaffold(
-      appBar: editing ? AppBar(title: const Text('Edit statement')) : null,
+      appBar: AppBar(title: Text(editing ? 'Edit statement' : 'New statement')),
       // Pinned above the keyboard and the tab bar.
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -260,8 +260,6 @@ class _AddWidgetState extends State<AddWidget> {
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
-                    backgroundColor: color,
-                    foregroundColor: Colors.white,
                   ),
                   onPressed: _saving ? null : _save,
                   child: Text(editing ? 'Save changes' : 'Save'),
@@ -271,108 +269,92 @@ class _AddWidgetState extends State<AddWidget> {
           ),
         ),
       ),
-      // Filled fields without outline; a primary border marks focus.
-      body: Theme(
-        data: Theme.of(context).copyWith(
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            border: OutlineInputBorder(
-              borderSide: BorderSide.none,
-              borderRadius: BorderRadius.circular(12),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Column(
+              spacing: 20,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AmountField(
+                  controller: amountController,
+                  color: color,
+                  trailing: FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      // Same width for both labels.
+                      minimumSize: const Size(110, 40),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      foregroundColor: color,
+                    ),
+                    onPressed: () => setState(() => expense = !expense),
+                    child: Text(expense ? 'Expense' : 'Income'),
+                  ),
+                ),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        DateButton(
+                          date,
+                          onChanged: (d) => setState(() => date = d),
+                        ),
+                        TimeButton(
+                          date,
+                          onChanged: (d) => setState(() => date = d),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.account_balance_wallet_outlined),
+                        const SizedBox(width: 8),
+                        Expanded(child: _accountField()),
+                      ],
+                    ),
+                  ),
+                ),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      spacing: 12,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: titleController,
+                          style: Theme.of(context).textTheme.titleMedium,
+                          decoration: const InputDecoration(
+                            labelText: 'Title',
+                            prefixIcon: Icon(Icons.short_text),
+                          ),
+                          validator: (value) => value == null || value.isEmpty
+                              ? 'Please add a Title'
+                              : null,
+                        ),
+                        _tagsField(),
+                      ],
+                    ),
+                  ),
+                ),
+                // Optional, so plain and below the card.
+                TextFormField(
+                  controller: noteController,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: const InputDecoration(
+                    hintText: 'Write a note (optional)',
+                    prefixIcon: Icon(Icons.notes),
+                    filled: false,
+                    border: InputBorder.none,
+                  ),
+                  maxLines: null,
+                ),
+              ],
             ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Column(
-                spacing: 20,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: FilledButton.tonal(
-                      style: FilledButton.styleFrom(
-                        // Same width for both labels.
-                        minimumSize: const Size(110, 40),
-                        backgroundColor: Colors.grey.shade200,
-                        foregroundColor: color,
-                      ),
-                      onPressed: () => setState(() => expense = !expense),
-                      child: Text(expense ? 'Expense' : 'Income'),
-                    ),
-                  ),
-                  AmountField(controller: amountController, color: color),
-                  Card(
-                    margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Row(
-                        children: [
-                          DateButton(
-                            date,
-                            onChanged: (d) => setState(() => date = d),
-                          ),
-                          TimeButton(
-                            date,
-                            onChanged: (d) => setState(() => date = d),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.account_balance_wallet_outlined),
-                          const SizedBox(width: 8),
-                          Expanded(child: _accountField()),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Card(
-                    margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        spacing: 12,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextFormField(
-                            controller: titleController,
-                            style: Theme.of(context).textTheme.titleMedium,
-                            decoration: const InputDecoration(
-                              labelText: 'Title',
-                              prefixIcon: Icon(Icons.short_text),
-                            ),
-                            validator: (value) => value == null || value.isEmpty
-                                ? 'Please add a Title'
-                                : null,
-                          ),
-                          _tagsField(),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Optional, so plain and below the card.
-                  TextFormField(
-                    controller: noteController,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a note (optional)',
-                      prefixIcon: Icon(Icons.notes),
-                      filled: false,
-                      border: InputBorder.none,
-                    ),
-                    maxLines: null,
-                  ),
-                ],
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
