@@ -10,7 +10,8 @@ class MoneyMind extends StatelessWidget {
 
   static ThemeData _theme(Brightness brightness) {
     final colors = ColorScheme.fromSeed(
-      seedColor: Colors.teal,
+      seedColor: Colors.white10,
+      dynamicSchemeVariant: DynamicSchemeVariant.neutral,
       brightness: brightness,
     );
     // Filled fields without outline; a primary border marks focus.

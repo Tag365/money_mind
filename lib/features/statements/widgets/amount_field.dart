@@ -7,10 +7,18 @@ import 'package:money_mind/common/money_text.dart';
 class AmountField extends StatelessWidget {
   final TextEditingController controller;
 
-  /// Red for expenses, green for income.
+  /// Red for expenses, green for income; colors the typed amount and the sum.
   final Color color;
 
-  const AmountField({super.key, required this.controller, required this.color});
+  /// Shown at the end of the field, opposite the € sign.
+  final Widget? trailing;
+
+  const AmountField({
+    super.key,
+    required this.controller,
+    required this.color,
+    this.trailing,
+  });
 
   /// "= 19,70 €" while [text] holds more than one charge, else null.
   static String? _total(String text) {
@@ -38,7 +46,8 @@ class AmountField extends StatelessWidget {
             hintText: '0,00',
             filled: false,
             border: InputBorder.none,
-            prefixIcon: Icon(Icons.euro_sharp, color: color),
+            prefixIcon: const Icon(Icons.euro_sharp),
+            suffixIcon: trailing,
           ),
           // signed: shows a minus key on the number keyboard.
           keyboardType: const TextInputType.numberWithOptions(

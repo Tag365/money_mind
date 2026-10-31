@@ -260,8 +260,6 @@ class _AddWidgetState extends State<AddWidget> {
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
-                    backgroundColor: color,
-                    foregroundColor: Colors.white,
                   ),
                   onPressed: _saving ? null : _save,
                   child: Text(editing ? 'Save changes' : 'Save'),
@@ -280,8 +278,10 @@ class _AddWidgetState extends State<AddWidget> {
               spacing: 20,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: FilledButton.tonal(
+                AmountField(
+                  controller: amountController,
+                  color: color,
+                  trailing: FilledButton.tonal(
                     style: FilledButton.styleFrom(
                       // Same width for both labels.
                       minimumSize: const Size(110, 40),
@@ -294,7 +294,6 @@ class _AddWidgetState extends State<AddWidget> {
                     child: Text(expense ? 'Expense' : 'Income'),
                   ),
                 ),
-                AmountField(controller: amountController, color: color),
                 Card(
                   margin: EdgeInsets.zero,
                   child: Padding(
