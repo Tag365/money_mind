@@ -11,7 +11,7 @@ flutter pub get
 flutter run
 flutter analyze                                  # lints: package:flutter_lints
 flutter test                                     # all tests
-flutter test test/widget_test.dart               # single file
+flutter test test/add_widget_test.dart           # single file
 flutter test --plain-name "<test name>"          # single test
 dart run build_runner build --delete-conflicting-outputs   # regenerate Drift code
 flutter build apk --release
@@ -19,7 +19,7 @@ flutter build apk --release
 
 `lib/database/app_database.g.dart` is generated but committed (CI does not run build_runner). Regenerate and commit it after any change to the tables in `lib/database/models/` or to `AppDatabase`.
 
-`test/widget_test.dart` is still the default Flutter counter template and fails against the current app.
+Widget tests swap in an in-memory database: `DatabaseService.instance.database = AppDatabase(NativeDatabase.memory())`. Do DB reads/writes inside `tester.runAsync`, and unmount the widget before `db.close()` so its watch streams are cancelled.
 
 ## Architecture
 

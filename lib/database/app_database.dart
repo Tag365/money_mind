@@ -12,7 +12,9 @@ part 'app_database.g.dart';
 
 @DriftDatabase(tables: [Statements, Accounts, Tags])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  // Tests pass NativeDatabase.memory().
+  AppDatabase([QueryExecutor? executor])
+    : super(executor ?? _openConnection());
 
   @override
   int get schemaVersion => 3;

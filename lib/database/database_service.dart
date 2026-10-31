@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/AccountType.dart';
 
@@ -29,6 +30,9 @@ class DatabaseService {
     _database = AppDatabase();
     return _database!;
   }
+
+  @visibleForTesting
+  set database(AppDatabase db) => _database = db;
 
   Future<int> addAccount(String name, AccountType type) async {
     return await database
