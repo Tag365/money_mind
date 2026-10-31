@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:money_mind/database/models/accounts.dart';
 import 'package:money_mind/database/models/list_converter.dart';
+import 'package:money_mind/database/models/recurrences.dart';
 
 class Statements extends Table {
   // Internal
@@ -15,6 +16,8 @@ class Statements extends Table {
   RealColumn get amount => real()();
   TextColumn get tags => text().map(const ListConverter<String>())();
   TextColumn get note => text()();
+  IntColumn get recurrence =>
+      integer().nullable().references(Recurrences, #id)();
 
   @override
   String toString() {
