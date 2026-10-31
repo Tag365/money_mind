@@ -17,7 +17,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -30,18 +30,25 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) await m.addColumn(tags, tags.color);
       if (from < 4) {
         await m.createTable(recurrences);
-        await _addStatementsColumn(m, statements.recurrence);
+        await _addColumn(m, statements, statements.recurrence);
       }
-      if (from < 5) await _addStatementsColumn(m, statements.transfer);
+      if (from < 5) await _addColumn(m, statements, statements.transfer);
+      if (from < 6) await _addColumn(m, accounts, accounts.closed);
     },
   );
 
   // Upgrades are not transactional: a run cut short (e.g. by a restart) may
   // have added the column without storing the new version.
-  Future<void> _addStatementsColumn(Migrator m, GeneratedColumn column) async {
-    final columns = await customSelect('PRAGMA table_info(statements)').get();
+  Future<void> _addColumn(
+    Migrator m,
+    TableInfo table,
+    GeneratedColumn column,
+  ) async {
+    final columns = await customSelect(
+      'PRAGMA table_info(${table.actualTableName})',
+    ).get();
     if (!columns.any((c) => c.read<String>('name') == column.name)) {
-      await m.addColumn(statements, column);
+      await m.addColumn(table, column);
     }
   }
 

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// "12.50 €". Rounds to cents first, so float drift never shows "-0.00 €".
+String formatMoney(double amount) =>
+    "${((amount * 100).round() / 100).toStringAsFixed(2)} €";
+
 /// Amount in euros, green for income and red for expenses.
 class MoneyText extends StatelessWidget {
   final double amount;
@@ -9,9 +13,11 @@ class MoneyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = amount < 0 ? Colors.red.shade400 : Colors.green.shade600;
+    final color = (amount * 100).round() < 0
+        ? Colors.red.shade400
+        : Colors.green.shade600;
     return Text(
-      "${amount.toStringAsFixed(2)} €",
+      formatMoney(amount),
       style: (style ?? Theme.of(context).textTheme.titleMedium)?.copyWith(
         color: color,
         fontWeight: FontWeight.w600,

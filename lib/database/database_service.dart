@@ -41,10 +41,6 @@ class DatabaseService {
 
   AppDatabase? _database;
 
-  factory DatabaseService() {
-    return instance;
-  }
-
   AppDatabase get database {
     if (_database != null) return _database!;
     _database = AppDatabase();
@@ -60,12 +56,20 @@ class DatabaseService {
         .insert(AccountsCompanion(name: Value(name), type: Value(type)));
   }
 
-  Future<void> deleteAccount(Account account) async {
-    await database.delete(database.accounts).delete(account);
-  }
-
-  Future<List<Account>> getAccounts() async {
-    return await database.select(database.accounts).get();
+  /// Marks [account] closed: its statements and balance stay, but it takes no
+  /// new statements, so the series that would add some stop.
+  Future<void> closeAccount(Account account) async {
+    await database.transaction(() async {
+      for (final r in await database.select(database.recurrences).get()) {
+        // New occurrences copy the newest statement, so it decides the account.
+        if ((await _latestOf(r.id))?.account == account.id) {
+          await stopRecurrence(r.id);
+        }
+      }
+      await (database.update(database.accounts)
+            ..where((tbl) => tbl.id.equals(account.id)))
+          .write(const AccountsCompanion(closed: Value(true)));
+    });
   }
 
   /// Accounts with the balance as of now: statements dated in the future
@@ -147,12 +151,6 @@ class DatabaseService {
             ..where((tbl) => tbl.id.equals(statement.id)))
           .write(StatementsCompanion(tags: Value(tags)));
     }
-  }
-
-  Future<List<Statement>> getStatementsForAccount(Account account) async {
-    return await (database.select(
-      database.statements,
-    )..where((tbl) => tbl.account.equals(account.id))).get();
   }
 
   Future<void> addStatement(
@@ -274,7 +272,9 @@ class DatabaseService {
           : await (database.select(database.statements)..where(
                   (tbl) =>
                       tbl.recurrence.equals(series) &
-                      tbl.paymentDate.isBiggerThanValue(after),
+                      tbl.paymentDate.isBiggerThanValue(after) &
+                      // Moved to an earlier date, the stored row is "later".
+                      tbl.id.isNotValue(old.id),
                 ))
                 .get();
       for (final (from, to) in [

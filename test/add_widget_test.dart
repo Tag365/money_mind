@@ -72,6 +72,19 @@ void main() {
     await closeForm(tester);
   });
 
+  testWidgets('closed accounts cannot be picked', (tester) async {
+    await tester.runAsync(() async {
+      final old = await service.addAccount('Old', AccountType.debit);
+      await service.closeAccount(await service.getAccountById(old));
+    });
+    await openForm(tester);
+    await tester.tap(find.text('Giro'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Old'), findsNothing);
+    await closeForm(tester);
+  });
+
   testWidgets('income is stored as a positive amount', (tester) async {
     await openForm(tester);
     await tester.tap(find.text('Expense'));

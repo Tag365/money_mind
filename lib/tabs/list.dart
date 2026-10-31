@@ -264,7 +264,7 @@ class _StatementTile extends StatelessWidget {
           MoneyText(statement.amount),
           if (balance != null)
             Text(
-              "${balance.toStringAsFixed(2)} €",
+              formatMoney(balance),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
