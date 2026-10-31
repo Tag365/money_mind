@@ -111,8 +111,11 @@ class _TagDialogState extends State<_TagDialog> {
 
   void _save() {
     final name = nameController.text.trim();
+    // Case-insensitive like the tag filter (SQL LIKE), so "food" and "Food"
+    // never both exist.
     final taken = widget.tags.any(
-      (t) => t.name == name && t.id != widget.tag?.id,
+      (t) =>
+          t.name.toLowerCase() == name.toLowerCase() && t.id != widget.tag?.id,
     );
     if (name.isEmpty || taken) {
       setState(

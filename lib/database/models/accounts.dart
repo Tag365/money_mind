@@ -9,4 +9,7 @@ class Accounts extends Table {
   TextColumn get type => textEnum<AccountType>()();
 
   RealColumn get balance => real().withDefault(const Constant(0))();
+
+  /// Closed accounts keep their statements but take no new ones.
+  BoolColumn get closed => boolean().withDefault(const Constant(false))();
 }

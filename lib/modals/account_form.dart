@@ -15,14 +15,16 @@ class _AccountFormState extends State<AccountForm> {
   final _formKey = GlobalKey<FormState>();
   final accountNameController = TextEditingController();
   final balanceController = TextEditingController();
-  final typeController = TextEditingController();
   DatabaseService databaseService = DatabaseService.instance;
   AccountType? accountType = AccountType.debit;
+  // Set for good: the sheet closes after saving.
+  bool _saving = false;
 
   void _addAccount() async {
-    if (!_formKey.currentState!.validate()) {
+    if (_saving || !_formKey.currentState!.validate()) {
       return;
     }
+    setState(() => _saving = true);
     final double initialBalance = double.parse(balanceController.text);
     int accountId = await databaseService.addAccount(
       accountNameController.text,
@@ -47,7 +49,6 @@ class _AccountFormState extends State<AccountForm> {
     // Clean up the controller when the widget is disposed.
     accountNameController.dispose();
     balanceController.dispose();
-    typeController.dispose();
     super.dispose();
   }
 
@@ -119,7 +120,6 @@ class _AccountFormState extends State<AccountForm> {
                           SizedBox(
                             width: double.infinity,
                             child: DropdownMenu(
-                              controller: typeController,
                               label: Text('Account type'),
                               initialSelection: AccountType.debit,
                               dropdownMenuEntries: AccountType.entries,
@@ -136,7 +136,7 @@ class _AccountFormState extends State<AccountForm> {
                               style: FilledButton.styleFrom(
                                 minimumSize: Size.fromHeight(52),
                               ),
-                              onPressed: _addAccount,
+                              onPressed: _saving ? null : _addAccount,
                               child: Text('Add account'),
                             ),
                           ),

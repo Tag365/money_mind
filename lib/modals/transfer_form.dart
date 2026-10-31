@@ -19,6 +19,8 @@ class _TransferFormState extends State<TransferForm> {
   late Account from = widget.accounts[0];
   late Account to = widget.accounts[1];
   DateTime date = DateTime.now();
+  // Set for good: the sheet closes after saving.
+  bool _saving = false;
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -41,7 +43,8 @@ class _TransferFormState extends State<TransferForm> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_saving || !_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
     await DatabaseService.instance.addTransfer(
       from,
       to,
@@ -130,7 +133,7 @@ class _TransferFormState extends State<TransferForm> {
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
               ),
-              onPressed: _save,
+              onPressed: _saving ? null : _save,
               child: const Text('Transfer'),
             ),
           ],

@@ -146,8 +146,7 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             Text(
               [
                 widget.accountName ?? 'Deleted account',
-                if (balance != null)
-                  'balance after: ${balance.toStringAsFixed(2)} €',
+                if (balance != null) 'balance after: ${formatMoney(balance)}',
               ].join(' · '),
             ),
           ),

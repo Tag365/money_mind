@@ -51,8 +51,21 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _closedMeta = const VerificationMeta('closed');
   @override
-  List<GeneratedColumn> get $columns => [id, name, type, balance];
+  late final GeneratedColumn<bool> closed = GeneratedColumn<bool>(
+    'closed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("closed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, type, balance, closed];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -82,6 +95,12 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         balance.isAcceptableOrUnknown(data['balance']!, _balanceMeta),
       );
     }
+    if (data.containsKey('closed')) {
+      context.handle(
+        _closedMeta,
+        closed.isAcceptableOrUnknown(data['closed']!, _closedMeta),
+      );
+    }
     return context;
   }
 
@@ -109,6 +128,10 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.double,
         data['${effectivePrefix}balance'],
       )!,
+      closed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}closed'],
+      )!,
     );
   }
 
@@ -126,11 +149,15 @@ class Account extends DataClass implements Insertable<Account> {
   final String name;
   final AccountType type;
   final double balance;
+
+  /// Closed accounts keep their statements but take no new ones.
+  final bool closed;
   const Account({
     required this.id,
     required this.name,
     required this.type,
     required this.balance,
+    required this.closed,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -141,6 +168,7 @@ class Account extends DataClass implements Insertable<Account> {
       map['type'] = Variable<String>($AccountsTable.$convertertype.toSql(type));
     }
     map['balance'] = Variable<double>(balance);
+    map['closed'] = Variable<bool>(closed);
     return map;
   }
 
@@ -150,6 +178,7 @@ class Account extends DataClass implements Insertable<Account> {
       name: Value(name),
       type: Value(type),
       balance: Value(balance),
+      closed: Value(closed),
     );
   }
 
@@ -165,6 +194,7 @@ class Account extends DataClass implements Insertable<Account> {
         serializer.fromJson<String>(json['type']),
       ),
       balance: serializer.fromJson<double>(json['balance']),
+      closed: serializer.fromJson<bool>(json['closed']),
     );
   }
   @override
@@ -177,6 +207,7 @@ class Account extends DataClass implements Insertable<Account> {
         $AccountsTable.$convertertype.toJson(type),
       ),
       'balance': serializer.toJson<double>(balance),
+      'closed': serializer.toJson<bool>(closed),
     };
   }
 
@@ -185,11 +216,13 @@ class Account extends DataClass implements Insertable<Account> {
     String? name,
     AccountType? type,
     double? balance,
+    bool? closed,
   }) => Account(
     id: id ?? this.id,
     name: name ?? this.name,
     type: type ?? this.type,
     balance: balance ?? this.balance,
+    closed: closed ?? this.closed,
   );
   Account copyWithCompanion(AccountsCompanion data) {
     return Account(
@@ -197,6 +230,7 @@ class Account extends DataClass implements Insertable<Account> {
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
       balance: data.balance.present ? data.balance.value : this.balance,
+      closed: data.closed.present ? data.closed.value : this.closed,
     );
   }
 
@@ -206,13 +240,14 @@ class Account extends DataClass implements Insertable<Account> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('balance: $balance')
+          ..write('balance: $balance, ')
+          ..write('closed: $closed')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, balance);
+  int get hashCode => Object.hash(id, name, type, balance, closed);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -220,7 +255,8 @@ class Account extends DataClass implements Insertable<Account> {
           other.id == this.id &&
           other.name == this.name &&
           other.type == this.type &&
-          other.balance == this.balance);
+          other.balance == this.balance &&
+          other.closed == this.closed);
 }
 
 class AccountsCompanion extends UpdateCompanion<Account> {
@@ -228,17 +264,20 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<String> name;
   final Value<AccountType> type;
   final Value<double> balance;
+  final Value<bool> closed;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.balance = const Value.absent(),
+    this.closed = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required AccountType type,
     this.balance = const Value.absent(),
+    this.closed = const Value.absent(),
   }) : name = Value(name),
        type = Value(type);
   static Insertable<Account> custom({
@@ -246,12 +285,14 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Expression<String>? name,
     Expression<String>? type,
     Expression<double>? balance,
+    Expression<bool>? closed,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
       if (balance != null) 'balance': balance,
+      if (closed != null) 'closed': closed,
     });
   }
 
@@ -260,12 +301,14 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<String>? name,
     Value<AccountType>? type,
     Value<double>? balance,
+    Value<bool>? closed,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
       balance: balance ?? this.balance,
+      closed: closed ?? this.closed,
     );
   }
 
@@ -286,6 +329,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (balance.present) {
       map['balance'] = Variable<double>(balance.value);
     }
+    if (closed.present) {
+      map['closed'] = Variable<bool>(closed.value);
+    }
     return map;
   }
 
@@ -295,7 +341,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('balance: $balance')
+          ..write('balance: $balance, ')
+          ..write('closed: $closed')
           ..write(')'))
         .toString();
   }
@@ -1630,6 +1677,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       required String name,
       required AccountType type,
       Value<double> balance,
+      Value<bool> closed,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
@@ -1637,6 +1685,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<String> name,
       Value<AccountType> type,
       Value<double> balance,
+      Value<bool> closed,
     });
 
 final class $$AccountsTableReferences
@@ -1689,6 +1738,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<double> get balance => $composableBuilder(
     column: $table.balance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get closed => $composableBuilder(
+    column: $table.closed,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1746,6 +1800,11 @@ class $$AccountsTableOrderingComposer
     column: $table.balance,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get closed => $composableBuilder(
+    column: $table.closed,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -1768,6 +1827,9 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<double> get balance =>
       $composableBuilder(column: $table.balance, builder: (column) => column);
+
+  GeneratedColumn<bool> get closed =>
+      $composableBuilder(column: $table.closed, builder: (column) => column);
 
   Expression<T> statementsRefs<T extends Object>(
     Expression<T> Function($$StatementsTableAnnotationComposer a) f,
@@ -1827,11 +1889,13 @@ class $$AccountsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<AccountType> type = const Value.absent(),
                 Value<double> balance = const Value.absent(),
+                Value<bool> closed = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
                 type: type,
                 balance: balance,
+                closed: closed,
               ),
           createCompanionCallback:
               ({
@@ -1839,11 +1903,13 @@ class $$AccountsTableTableManager
                 required String name,
                 required AccountType type,
                 Value<double> balance = const Value.absent(),
+                Value<bool> closed = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
                 type: type,
                 balance: balance,
+                closed: closed,
               ),
           withReferenceMapper: (p0) => p0
               .map(

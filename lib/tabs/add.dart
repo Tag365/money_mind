@@ -31,6 +31,7 @@ class _AddWidgetState extends State<AddWidget> {
   int? accountId;
   bool expense = true;
   final Set<String> selectedTags = {};
+  bool _saving = false;
 
   @override
   void initState() {
@@ -148,7 +149,18 @@ class _AddWidgetState extends State<AddWidget> {
     return total == null ? null : '= ${total.toStringAsFixed(2)}';
   }
 
+  // A second tap while the first save runs would save twice.
   Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await _write();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _write() async {
     if (!_formKey.currentState!.validate() || accountId == null) return;
     final edited = widget.statement;
     if (edited != null) {
@@ -195,9 +207,13 @@ class _AddWidgetState extends State<AddWidget> {
     return StreamBuilder<List<Account>>(
       stream: _accounts,
       builder: (context, snapshot) {
-        final accounts = snapshot.data ?? [];
+        // An edited statement keeps its account even when it is closed.
+        final accounts = [
+          for (final a in snapshot.data ?? <Account>[])
+            if (!a.closed || a.id == widget.statement?.account) a,
+        ];
         if (accounts.isEmpty) {
-          return const Text('Create an account first.');
+          return const Text('No open account. Add one in Accounts.');
         }
         if (!accounts.any((a) => a.id == accountId)) {
           accountId = accounts.first.id;
@@ -368,7 +384,7 @@ class _AddWidgetState extends State<AddWidget> {
                     backgroundColor: color,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: _save,
+                  onPressed: _saving ? null : _save,
                   child: Text(editing ? 'Save changes' : 'Save'),
                 ),
               ),

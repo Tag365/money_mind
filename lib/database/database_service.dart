@@ -41,10 +41,6 @@ class DatabaseService {
 
   AppDatabase? _database;
 
-  factory DatabaseService() {
-    return instance;
-  }
-
   AppDatabase get database {
     if (_database != null) return _database!;
     _database = AppDatabase();
@@ -60,12 +56,15 @@ class DatabaseService {
         .insert(AccountsCompanion(name: Value(name), type: Value(type)));
   }
 
-  Future<void> deleteAccount(Account account) async {
-    await database.delete(database.accounts).delete(account);
-  }
-
-  Future<List<Account>> getAccounts() async {
-    return await database.select(database.accounts).get();
+  /// Marks [account] closed: its statements and balance stay, but it takes no
+  /// new statements, so the series that would add some stop.
+  Future<void> closeAccount(Account account) async {
+    await database.transaction(() async {
+      await (database.update(database.accounts)
+            ..where((tbl) => tbl.id.equals(account.id)))
+          .write(const AccountsCompanion(closed: Value(true)));
+      await addDueRecurrences();
+    });
   }
 
   /// Accounts with the balance as of now: statements dated in the future
@@ -147,12 +146,6 @@ class DatabaseService {
             ..where((tbl) => tbl.id.equals(statement.id)))
           .write(StatementsCompanion(tags: Value(tags)));
     }
-  }
-
-  Future<List<Statement>> getStatementsForAccount(Account account) async {
-    return await (database.select(
-      database.statements,
-    )..where((tbl) => tbl.account.equals(account.id))).get();
   }
 
   Future<void> addStatement(
@@ -274,7 +267,9 @@ class DatabaseService {
           : await (database.select(database.statements)..where(
                   (tbl) =>
                       tbl.recurrence.equals(series) &
-                      tbl.paymentDate.isBiggerThanValue(after),
+                      tbl.paymentDate.isBiggerThanValue(after) &
+                      // Moved to an earlier date, the stored row is "later".
+                      tbl.id.isNotValue(old.id),
                 ))
                 .get();
       for (final (from, to) in [
@@ -444,7 +439,7 @@ class DatabaseService {
   }
 
   /// Creates every occurrence due by [at] (default: now), copying the newest
-  /// statement of each series. Series with `ahead` also get the next
+  /// statement of each series. Series whose account is closed or gone stop. Series with `ahead` also get the next
   /// occurrence within a month, but never more than one upcoming statement.
   /// Safe to call any number of times: each occurrence is created once.
   Future<void> addDueRecurrences({DateTime? at}) async {
@@ -458,6 +453,14 @@ class DatabaseService {
           await (database.delete(
             database.recurrences,
           )..where((tbl) => tbl.id.equals(r.id))).go();
+          continue;
+        }
+        final account = await (database.select(
+          database.accounts,
+        )..where((tbl) => tbl.id.equals(template.account))).getSingleOrNull();
+        if (account == null || account.closed) {
+          // Closed, or deleted before accounts could be closed.
+          await stopRecurrence(r.id);
           continue;
         }
         final monthAhead = DateTime(

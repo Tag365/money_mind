@@ -21,14 +21,37 @@ class AccountWidget extends StatefulWidget {
 class _AccountState extends State<AccountWidget> {
   DatabaseService databaseService = DatabaseService.instance;
 
-  void _openAddAccountModal() async {
-    final result = await showModalBottomSheet(
+  void _openAddAccountModal() {
+    showModalBottomSheet(
       isScrollControlled: true,
       showDragHandle: true,
       context: context,
       builder: (BuildContext context) => const AccountForm(),
     );
-    if (result == null || result is! Account) return;
+  }
+
+  Future<void> _closeAccount(Account account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Close "${account.name}"?'),
+        content: const Text(
+          'Its statements stay in the list, but it cannot get new ones. '
+          'Recurring statements stop.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Close account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await databaseService.closeAccount(account);
   }
 
   // Created once so rebuilds don't re-run the query; updates automatically
@@ -114,22 +137,23 @@ class _AccountState extends State<AccountWidget> {
             clipBehavior: Clip.antiAlias,
             child: Slidable(
               groupTag: "0",
-              endActionPane: ActionPane(
-                motion: ScrollMotion(),
-                extentRatio: 0.25,
-                children: [
-                  SlidableAction(
-                    onPressed: ((_) {
-                      databaseService.deleteAccount(account);
-                    }),
-                    backgroundColor: colors.error,
-                    foregroundColor: colors.onError,
-                    icon: Icons.delete_outline,
-                    label: "Delete",
-                  ),
-                ],
-              ),
+              endActionPane: account.closed
+                  ? null
+                  : ActionPane(
+                      motion: ScrollMotion(),
+                      extentRatio: 0.25,
+                      children: [
+                        SlidableAction(
+                          onPressed: (_) => _closeAccount(account),
+                          backgroundColor: colors.error,
+                          foregroundColor: colors.onError,
+                          icon: Icons.block,
+                          label: "Close",
+                        ),
+                      ],
+                    ),
               child: ListTile(
+                enabled: !account.closed,
                 leading: CircleAvatar(
                   backgroundColor: colors.secondaryContainer,
                   foregroundColor: colors.onSecondaryContainer,
@@ -140,8 +164,15 @@ class _AccountState extends State<AccountWidget> {
                   ),
                 ),
                 title: Text(account.name),
-                subtitle: Text(account.type.displayName),
-                trailing: MoneyText(account.balance),
+                subtitle: Text(
+                  account.closed
+                      ? "${account.type.displayName} · Closed"
+                      : account.type.displayName,
+                ),
+                trailing: Opacity(
+                  opacity: account.closed ? 0.5 : 1,
+                  child: MoneyText(account.balance),
+                ),
               ),
             ),
           );
@@ -151,27 +182,28 @@ class _AccountState extends State<AccountWidget> {
   }
 
   Widget _actions(List<Account> accounts) {
+    final open = accounts.where((a) => !a.closed).toList();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       spacing: 12,
       children: [
         // Dev tool: only offered when there is an account to fill.
-        if (kDebugMode && accounts.isNotEmpty)
+        if (kDebugMode && open.isNotEmpty)
           FloatingActionButton.small(
             heroTag: "speedtest",
             tooltip: "Insert speedtest statements",
-            onPressed: () => _insertSpeedtestStatements(accounts.first),
+            onPressed: () => _insertSpeedtestStatements(open.first),
             child: const Icon(Icons.speed),
           ),
-        if (accounts.length >= 2)
+        if (open.length >= 2)
           FloatingActionButton.extended(
             heroTag: "transfer",
             onPressed: () => showModalBottomSheet(
               isScrollControlled: true,
               showDragHandle: true,
               context: context,
-              builder: (context) => TransferForm(accounts: accounts),
+              builder: (context) => TransferForm(accounts: open),
             ),
             icon: const Icon(Icons.swap_horiz),
             label: const Text("Transfer"),
