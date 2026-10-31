@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/features/statements/add_statement.dart';
 import 'package:money_mind/features/statements/recurrence_dialog.dart';
+import 'package:money_mind/features/statements/statement_actions.dart';
 import 'package:money_mind/features/statements/widgets/info_tile.dart';
 import 'package:money_mind/features/tags/widgets/tag_labels.dart';
 
@@ -26,22 +26,11 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
 
   Statement get _statement => widget.row.statement;
 
-  /// Closes the sheet and opens the Create form in edit mode as its own page.
-  Future<void> _edit() async {
+  /// Closes the sheet, then runs [action] on the page below it.
+  void _closeAnd(Future<void> Function(BuildContext, Statement) action) {
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     navigator.pop();
-    final saved = await navigator.push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => AddWidget(statement: _statement),
-      ),
-    );
-    if (saved == true) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Statement updated')),
-      );
-    }
+    action(navigator.context, _statement);
   }
 
   Future<void> _editRecurrence(Recurrence? recurrence) async {
@@ -63,39 +52,9 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
   }
 
   Future<void> _delete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete statement?'),
-        content: Text(
-          _statement.transfer == null
-              ? '"${_statement.title}" will be removed and its amount taken '
-                    'out of the account balance.'
-              : 'Both sides of the transfer will be removed and the account '
-                    'balances restored.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    await DatabaseService.instance.deleteStatement(_statement);
-    if (!mounted) return;
-    Navigator.pop(context);
-    messenger.showSnackBar(const SnackBar(content: Text('Statement deleted')));
+    if (await deleteStatement(context, _statement) && mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -108,7 +67,13 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
     final textTheme = Theme.of(context).textTheme;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      // Clear of the system gesture bar.
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        16 + MediaQuery.viewPaddingOf(context).bottom,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -178,11 +143,20 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _edit,
+                  onPressed: () => _closeAnd(editStatement),
                   icon: const Icon(Icons.edit_outlined),
                   label: const Text('Edit'),
                 ),
               ),
+              // The Create form cannot make transfers.
+              if (statement.transfer == null)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _closeAnd(duplicateStatement),
+                    icon: const Icon(Icons.copy_outlined),
+                    label: const Text('Copy'),
+                  ),
+                ),
               Expanded(
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/app_database.dart';
@@ -124,15 +125,18 @@ class _ListState extends State<ListWidget> {
                 stream: _totals,
                 builder: (context, asyncSnapshot) => _snapshotView(
                   asyncSnapshot,
-                  (totals) => ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: totals.length,
-                    itemBuilder: (context, index) => PeriodTile(
-                      // Keeps a period open when the totals stream emits again.
-                      key: PageStorageKey(totals[index].start),
-                      period: totals[index],
-                      accountNames: _accountNames,
-                      filter: _filter,
+                  (totals) => SlidableAutoCloseBehavior(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      itemCount: totals.length,
+                      itemBuilder: (context, index) => PeriodTile(
+                        // Keeps a period open when the totals stream emits
+                        // again.
+                        key: PageStorageKey(totals[index].start),
+                        period: totals[index],
+                        accountNames: _accountNames,
+                        filter: _filter,
+                      ),
                     ),
                   ),
                 ),
