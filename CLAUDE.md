@@ -19,6 +19,8 @@ flutter build apk --release
 
 `lib/database/app_database.g.dart` is generated but committed (CI does not run build_runner). Regenerate and commit it after any change to the tables in `lib/database/models/` or to `AppDatabase`.
 
+After every Dart code change, hot reload the running app; for UI changes, also check them on the emulator with screenshots. Both steps are in the `check-app` skill (`.claude/skills/check-app/SKILL.md`).
+
 Widget tests swap in an in-memory database: `DatabaseService.instance.database = AppDatabase(NativeDatabase.memory())`. Do DB reads/writes inside `tester.runAsync`, and unmount the widget before `db.close()` so its watch streams are cancelled.
 
 ## Architecture
