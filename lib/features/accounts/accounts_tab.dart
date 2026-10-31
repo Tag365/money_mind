@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/accounts/account_form.dart';
 import 'package:money_mind/features/accounts/transfer_form.dart';
@@ -62,7 +63,6 @@ class _AccountState extends State<AccountWidget> {
   Future<void> _insertSpeedtestStatements(Account account) async {
     final Random rng = Random(0);
     final DateTime now = DateTime.now();
-    final Stopwatch stopwatch = Stopwatch()..start();
     await databaseService.addStatements([
       for (int i = 0; i < 36_500; i++)
         StatementsCompanion.insert(
@@ -76,7 +76,6 @@ class _AccountState extends State<AccountWidget> {
           note: "",
         ),
     ]);
-    print("Inserted 36500 statements in ${stopwatch.elapsedMilliseconds} ms");
   }
 
   List<Widget> _actions(List<Account> accounts) {
@@ -132,12 +131,14 @@ class _AccountState extends State<AccountWidget> {
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: _accounts,
-      builder: (context, asyncSnapshot) => Scaffold(
-        appBar: AppBar(
-          title: const Text("Accounts"),
-          actions: _actions(asyncSnapshot.data ?? []),
+      builder: (context, asyncSnapshot) => GlassBackground(
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text("Accounts"),
+            actions: _actions(asyncSnapshot.data ?? []),
+          ),
+          body: _body(asyncSnapshot),
         ),
-        body: _body(asyncSnapshot),
       ),
     );
   }

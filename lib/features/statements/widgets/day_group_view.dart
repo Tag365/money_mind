@@ -32,9 +32,8 @@ class DayGroupView extends StatelessWidget {
             ],
           ),
         ),
-        // Lighter than the month card, so each day stands out as a group.
+        // Glass on the month card's glass, so each day stands out as a group.
         Card(
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
           margin: const EdgeInsets.symmetric(horizontal: 8),
           clipBehavior: Clip.antiAlias,
           child: Column(

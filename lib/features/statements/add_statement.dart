@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
+import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/common/amount_expression.dart';
 import 'package:money_mind/common/date_button.dart';
 import 'package:money_mind/common/money_text.dart';
@@ -232,7 +233,7 @@ class _AddWidgetState extends State<AddWidget> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _closeEdit();
       },
-      child: _form(context, color, editing),
+      child: GlassBackground(child: _form(context, color, editing)),
     );
   }
 

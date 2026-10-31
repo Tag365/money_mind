@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/features/statements/statement_filter.dart';
@@ -95,48 +96,50 @@ class _ListState extends State<ListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statements'),
-        actions: [
-          IconButton(
-            tooltip: 'Filter',
-            onPressed: _openFilter,
-            icon: Badge(
-              isLabelVisible: _filter.isActive,
-              child: const Icon(Icons.filter_list),
+    return GlassBackground(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Statements'),
+          actions: [
+            IconButton(
+              tooltip: 'Filter',
+              onPressed: _openFilter,
+              icon: Badge(
+                isLabelVisible: _filter.isActive,
+                child: const Icon(Icons.filter_list),
+              ),
             ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_filter.isActive)
-            ActiveFilterChips(
-              filter: _filter,
-              accountNames: _accountNames,
-              onChanged: _setFilter,
-            ),
-          Expanded(
-            child: StreamBuilder(
-              stream: _totals,
-              builder: (context, asyncSnapshot) => _snapshotView(
-                asyncSnapshot,
-                (totals) => ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  itemCount: totals.length,
-                  itemBuilder: (context, index) => PeriodTile(
-                    // Keeps a period open when the totals stream emits again.
-                    key: PageStorageKey(totals[index].start),
-                    period: totals[index],
-                    accountNames: _accountNames,
-                    filter: _filter,
+          ],
+        ),
+        body: Column(
+          children: [
+            if (_filter.isActive)
+              ActiveFilterChips(
+                filter: _filter,
+                accountNames: _accountNames,
+                onChanged: _setFilter,
+              ),
+            Expanded(
+              child: StreamBuilder(
+                stream: _totals,
+                builder: (context, asyncSnapshot) => _snapshotView(
+                  asyncSnapshot,
+                  (totals) => ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: totals.length,
+                    itemBuilder: (context, index) => PeriodTile(
+                      // Keeps a period open when the totals stream emits again.
+                      key: PageStorageKey(totals[index].start),
+                      period: totals[index],
+                      accountNames: _accountNames,
+                      filter: _filter,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
