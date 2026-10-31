@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:money_mind/amount_expression.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/screens/manage_tags.dart';
@@ -73,11 +74,19 @@ class _AddWidgetState extends State<AddWidget> {
     });
   }
 
+  /// "= 19.70" below the field while it holds more than one charge.
+  String? _amountTotal() {
+    final text = amountController.text.trim();
+    if (!text.substring(text.isEmpty ? 0 : 1).contains(RegExp('[+-]'))) {
+      return null;
+    }
+    final total = evaluateAmount(text);
+    return total == null ? null : '= ${total.toStringAsFixed(2)}';
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || accountId == null) return;
-    final double amount = double.parse(
-      amountController.text.replaceAll(',', '.'),
-    );
+    final double amount = evaluateAmount(amountController.text)!;
     await databaseService.addStatement(
       titleController.text,
       expense ? -amount : amount,
@@ -140,6 +149,7 @@ class _AddWidgetState extends State<AddWidget> {
             decoration: const InputDecoration(
               labelText: 'Tags',
               border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.label_outline),
               suffixIcon: Icon(Icons.arrow_drop_down),
             ),
             isEmpty: selectedTags.isEmpty,
@@ -240,7 +250,42 @@ class _AddWidgetState extends State<AddWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Same colors as MoneyText.
+    final color = expense ? Colors.red.shade400 : Colors.green.shade600;
+    final total = _amountTotal();
     return Scaffold(
+      // Pinned above the keyboard and the tab bar.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Row(
+            spacing: 12,
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                  onPressed: _clear,
+                  child: const Text('Clear'),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _save,
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -250,21 +295,80 @@ class _AddWidgetState extends State<AddWidget> {
               spacing: 20,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Center(
+                  child: FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      // Same width for both labels.
+                      minimumSize: const Size(110, 40),
+                      backgroundColor: Colors.grey.shade200,
+                      foregroundColor: color,
+                    ),
+                    onPressed: () => setState(() => expense = !expense),
+                    child: Text(expense ? 'Expense' : 'Income'),
+                  ),
+                ),
+                Column(
+                  children: [
+                    TextFormField(
+                      controller: amountController,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '0,00',
+                        border: InputBorder.none,
+                        prefixIcon: Icon(Icons.euro_sharp, color: color),
+                        suffixIcon: IconButton(
+                          tooltip: 'Add another charge',
+                          icon: const Icon(Icons.add),
+                          onPressed: () =>
+                              setState(() => amountController.text += ' + '),
+                        ),
+                      ),
+                      // signed: shows a minus key on the number keyboard.
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      validator: (value) {
+                        final amount = evaluateAmount(value ?? '');
+                        if (amount == null || amount <= 0) {
+                          return 'Please enter a positive amount';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (total != null)
+                      Text(
+                        total,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleMedium?.copyWith(color: color),
+                      ),
+                  ],
+                ),
                 Row(
                   children: [
-                    TextButton(
+                    TextButton.icon(
                       onPressed: _pickDate,
-                      child: Text(date.toIso8601String().substring(0, 10)),
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(date.toIso8601String().substring(0, 10)),
                     ),
-                    TextButton(
+                    TextButton.icon(
                       onPressed: _pickTime,
-                      child: Text(
+                      icon: const Icon(Icons.schedule),
+                      label: Text(
                         MaterialLocalizations.of(context).formatTimeOfDay(
                           TimeOfDay.fromDateTime(date),
                           alwaysUse24HourFormat: true,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.account_balance_wallet_outlined),
                     const SizedBox(width: 8),
                     Expanded(child: _accountField()),
                   ],
@@ -274,77 +378,21 @@ class _AddWidgetState extends State<AddWidget> {
                   decoration: const InputDecoration(
                     labelText: 'Title',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.short_text),
                   ),
                   validator: (value) => value == null || value.isEmpty
                       ? 'Please add a Title'
                       : null,
                 ),
                 _tagsField(),
-                Row(
-                  spacing: 12,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: amountController,
-                        decoration: const InputDecoration(
-                          labelText: 'Amount',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.euro_sharp),
-                        ),
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        validator: (value) {
-                          final amount = double.tryParse(
-                            (value ?? '').replaceAll(',', '.'),
-                          );
-                          if (amount == null || amount <= 0) {
-                            return 'Please enter a positive amount';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    FilledButton.tonal(
-                      style: FilledButton.styleFrom(
-                        // Same width for both labels, so the amount field
-                        // does not resize when toggling.
-                        minimumSize: const Size(110, 48),
-                        backgroundColor: Colors.grey.shade200,
-                        // Same colors as MoneyText.
-                        foregroundColor: expense
-                            ? Colors.red.shade400
-                            : Colors.green.shade600,
-                      ),
-                      onPressed: () => setState(() => expense = !expense),
-                      child: Text(expense ? 'Expense' : 'Income'),
-                    ),
-                  ],
-                ),
                 TextFormField(
                   controller: noteController,
                   decoration: const InputDecoration(
                     labelText: 'Note',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.notes),
                   ),
                   maxLines: null,
-                ),
-                Row(
-                  spacing: 12,
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _clear,
-                        child: const Text('Clear'),
-                      ),
-                    ),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _save,
-                        child: const Text('Save'),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
