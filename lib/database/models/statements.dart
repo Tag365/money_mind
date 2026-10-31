@@ -19,6 +19,10 @@ class Statements extends Table {
   IntColumn get recurrence =>
       integer().nullable().references(Recurrences, #id)();
 
+  /// The other side of a transfer between two accounts; both point at each
+  /// other.
+  IntColumn get transfer => integer().nullable().references(Statements, #id)();
+
   @override
   String toString() {
     return "[$id] $title: $amount tags: $tags";

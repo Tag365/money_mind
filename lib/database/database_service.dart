@@ -178,10 +178,59 @@ class DatabaseService {
     });
   }
 
+  /// Moves [amount] from account [from] to [to] as two linked statements
+  /// tagged "Transfer", so the tag can be used to filter transfers out of
+  /// totals.
+  Future<void> addTransfer(
+    Account from,
+    Account to,
+    double amount,
+    DateTime date,
+  ) async {
+    assert(from.id != to.id && amount > 0);
+    StatementsCompanion side(String title, int account, double amount) =>
+        StatementsCompanion.insert(
+          title: title,
+          createdAt: DateTime.now(),
+          paymentDate: date,
+          account: account,
+          useDate: date,
+          amount: amount,
+          tags: const [transferTag],
+          note: '',
+        );
+    await database.transaction(() async {
+      final tagExists = await (database.select(
+        database.tags,
+      )..where((tbl) => tbl.name.equals(transferTag))).get();
+      if (tagExists.isEmpty) await addTag(transferTag, 0xFF607D8B);
+      final out = await database
+          .into(database.statements)
+          .insert(side('Transfer to ${to.name}', from.id, -amount));
+      final into = await database
+          .into(database.statements)
+          .insert(
+            side(
+              'Transfer from ${from.name}',
+              to.id,
+              amount,
+            ).copyWith(transfer: Value(out)),
+          );
+      await (database.update(database.statements)
+            ..where((tbl) => tbl.id.equals(out)))
+          .write(StatementsCompanion(transfer: Value(into)));
+      await _addToBalance(from.id, -amount);
+      await _addToBalance(to.id, amount);
+    });
+  }
+
+  static const transferTag = 'Transfer';
+
   /// Replaces the stored statement with the same id by [updated] and moves the
   /// amount between account balances accordingly. Upcoming statements of its
   /// series (later and in the future) get the same title, amount, account,
-  /// tags and note.
+  /// tags and note. The other side of a transfer gets the opposite amount and
+  /// the same dates.
   Future<void> updateStatement(Statement updated) async {
     await database.transaction(() async {
       // The stored row, not the caller's copy, is what the balances contain.
@@ -189,6 +238,12 @@ class DatabaseService {
         database.statements,
       )..where((tbl) => tbl.id.equals(updated.id))).getSingleOrNull();
       if (old == null) return;
+      final partnerId = old.transfer;
+      final partner = partnerId == null
+          ? null
+          : await (database.select(
+              database.statements,
+            )..where((tbl) => tbl.id.equals(partnerId))).getSingleOrNull();
       final series = old.recurrence;
       final after = updated.paymentDate.isAfter(DateTime.now())
           ? updated.paymentDate
@@ -203,7 +258,22 @@ class DatabaseService {
                 .get();
       for (final (from, to) in [
         // Only setRecurrence/stopRecurrence change the series link.
-        (old, updated.copyWith(recurrence: Value(series))),
+        (
+          old,
+          updated.copyWith(
+            recurrence: Value(series),
+            transfer: Value(partnerId),
+          ),
+        ),
+        if (partner != null)
+          (
+            partner,
+            partner.copyWith(
+              amount: -updated.amount,
+              paymentDate: updated.paymentDate,
+              useDate: updated.useDate,
+            ),
+          ),
         for (final s in upcoming)
           (
             s,
@@ -234,15 +304,27 @@ class DatabaseService {
     );
   }
 
-  /// Deletes [statement] and takes its amount back out of the account balance.
+  /// Deletes [statement], and the other side when it is a transfer, and takes
+  /// their amounts back out of the account balances.
   Future<void> deleteStatement(Statement statement) async {
     await database.transaction(() async {
-      final deleted = await (database.delete(
-        database.statements,
-      )..where((tbl) => tbl.id.equals(statement.id))).go();
+      // The stored rows, not the caller's copy, are what the balances contain.
+      final rows =
+          await (database.select(database.statements)..where(
+                (tbl) =>
+                    tbl.id.equals(statement.id) |
+                    (statement.transfer == null
+                        ? const Constant(false)
+                        : tbl.id.equals(statement.transfer!)),
+              ))
+              .get();
       // Already gone (e.g. tapped twice): the balance was adjusted back then.
-      if (deleted == 0) return;
-      await _addToBalance(statement.account, -statement.amount);
+      for (final row in rows) {
+        await (database.delete(
+          database.statements,
+        )..where((tbl) => tbl.id.equals(row.id))).go();
+        await _addToBalance(row.account, -row.amount);
+      }
     });
   }
 

@@ -78,8 +78,11 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
       builder: (context) => AlertDialog(
         title: const Text('Delete statement?'),
         content: Text(
-          '"${_statement.title}" will be removed and its amount taken out of '
-          'the account balance.',
+          _statement.transfer == null
+              ? '"${_statement.title}" will be removed and its amount taken '
+                    'out of the account balance.'
+              : 'Both sides of the transfer will be removed and the account '
+                    'balances restored.',
         ),
         actions: [
           TextButton(
@@ -182,24 +185,27 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             ),
           if (statement.note.isNotEmpty)
             _info(Icons.notes, 'Note', Text(statement.note)),
-          StreamBuilder(
-            stream: _recurrence,
-            builder: (context, snapshot) {
-              final recurrence = snapshot.data;
-              return _info(
-                Icons.repeat,
-                'Repeats',
-                Text(
-                  recurrence == null
-                      ? 'Never'
-                      : describeInterval(recurrence.unit, recurrence.every),
-                ),
-                onTap: snapshot.connectionState == ConnectionState.waiting
-                    ? null
-                    : () => _editRecurrence(recurrence),
-              );
-            },
-          ),
+          // shortcut: a repeated copy would book only one side of a transfer,
+          // so transfers cannot repeat until series copy both sides.
+          if (statement.transfer == null)
+            StreamBuilder(
+              stream: _recurrence,
+              builder: (context, snapshot) {
+                final recurrence = snapshot.data;
+                return _info(
+                  Icons.repeat,
+                  'Repeats',
+                  Text(
+                    recurrence == null
+                        ? 'Never'
+                        : describeInterval(recurrence.unit, recurrence.every),
+                  ),
+                  onTap: snapshot.connectionState == ConnectionState.waiting
+                      ? null
+                      : () => _editRecurrence(recurrence),
+                );
+              },
+            ),
           const SizedBox(height: 16),
           Row(
             spacing: 8,

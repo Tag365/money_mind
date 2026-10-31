@@ -484,7 +484,7 @@ class Recurrence extends DataClass implements Insertable<Recurrence> {
   /// Occurrences already created, i.e. the index of the next one.
   final int generated;
 
-  /// Create statements up to a month before they are due.
+  /// Create the next statement up to a month before it is due (only one).
   final bool ahead;
   const Recurrence({
     required this.id,
@@ -823,6 +823,20 @@ class $StatementsTable extends Statements
       'REFERENCES recurrences (id)',
     ),
   );
+  static const VerificationMeta _transferMeta = const VerificationMeta(
+    'transfer',
+  );
+  @override
+  late final GeneratedColumn<int> transfer = GeneratedColumn<int>(
+    'transfer',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES statements (id)',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -835,6 +849,7 @@ class $StatementsTable extends Statements
     tags,
     note,
     recurrence,
+    transfer,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -916,6 +931,12 @@ class $StatementsTable extends Statements
         recurrence.isAcceptableOrUnknown(data['recurrence']!, _recurrenceMeta),
       );
     }
+    if (data.containsKey('transfer')) {
+      context.handle(
+        _transferMeta,
+        transfer.isAcceptableOrUnknown(data['transfer']!, _transferMeta),
+      );
+    }
     return context;
   }
 
@@ -967,6 +988,10 @@ class $StatementsTable extends Statements
         DriftSqlType.int,
         data['${effectivePrefix}recurrence'],
       ),
+      transfer: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transfer'],
+      ),
     );
   }
 
@@ -990,6 +1015,10 @@ class Statement extends DataClass implements Insertable<Statement> {
   final List<String> tags;
   final String note;
   final int? recurrence;
+
+  /// The other side of a transfer between two accounts; both point at each
+  /// other.
+  final int? transfer;
   const Statement({
     required this.id,
     required this.createdAt,
@@ -1001,6 +1030,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     required this.tags,
     required this.note,
     this.recurrence,
+    this.transfer,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1021,6 +1051,9 @@ class Statement extends DataClass implements Insertable<Statement> {
     if (!nullToAbsent || recurrence != null) {
       map['recurrence'] = Variable<int>(recurrence);
     }
+    if (!nullToAbsent || transfer != null) {
+      map['transfer'] = Variable<int>(transfer);
+    }
     return map;
   }
 
@@ -1038,6 +1071,9 @@ class Statement extends DataClass implements Insertable<Statement> {
       recurrence: recurrence == null && nullToAbsent
           ? const Value.absent()
           : Value(recurrence),
+      transfer: transfer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transfer),
     );
   }
 
@@ -1057,6 +1093,7 @@ class Statement extends DataClass implements Insertable<Statement> {
       tags: serializer.fromJson<List<String>>(json['tags']),
       note: serializer.fromJson<String>(json['note']),
       recurrence: serializer.fromJson<int?>(json['recurrence']),
+      transfer: serializer.fromJson<int?>(json['transfer']),
     );
   }
   @override
@@ -1073,6 +1110,7 @@ class Statement extends DataClass implements Insertable<Statement> {
       'tags': serializer.toJson<List<String>>(tags),
       'note': serializer.toJson<String>(note),
       'recurrence': serializer.toJson<int?>(recurrence),
+      'transfer': serializer.toJson<int?>(transfer),
     };
   }
 
@@ -1087,6 +1125,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     List<String>? tags,
     String? note,
     Value<int?> recurrence = const Value.absent(),
+    Value<int?> transfer = const Value.absent(),
   }) => Statement(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -1098,6 +1137,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     tags: tags ?? this.tags,
     note: note ?? this.note,
     recurrence: recurrence.present ? recurrence.value : this.recurrence,
+    transfer: transfer.present ? transfer.value : this.transfer,
   );
   Statement copyWithCompanion(StatementsCompanion data) {
     return Statement(
@@ -1115,6 +1155,7 @@ class Statement extends DataClass implements Insertable<Statement> {
       recurrence: data.recurrence.present
           ? data.recurrence.value
           : this.recurrence,
+      transfer: data.transfer.present ? data.transfer.value : this.transfer,
     );
   }
 
@@ -1130,7 +1171,8 @@ class Statement extends DataClass implements Insertable<Statement> {
           ..write('amount: $amount, ')
           ..write('tags: $tags, ')
           ..write('note: $note, ')
-          ..write('recurrence: $recurrence')
+          ..write('recurrence: $recurrence, ')
+          ..write('transfer: $transfer')
           ..write(')'))
         .toString();
   }
@@ -1147,6 +1189,7 @@ class Statement extends DataClass implements Insertable<Statement> {
     tags,
     note,
     recurrence,
+    transfer,
   );
   @override
   bool operator ==(Object other) =>
@@ -1161,7 +1204,8 @@ class Statement extends DataClass implements Insertable<Statement> {
           other.amount == this.amount &&
           other.tags == this.tags &&
           other.note == this.note &&
-          other.recurrence == this.recurrence);
+          other.recurrence == this.recurrence &&
+          other.transfer == this.transfer);
 }
 
 class StatementsCompanion extends UpdateCompanion<Statement> {
@@ -1175,6 +1219,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
   final Value<List<String>> tags;
   final Value<String> note;
   final Value<int?> recurrence;
+  final Value<int?> transfer;
   const StatementsCompanion({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1186,6 +1231,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     this.tags = const Value.absent(),
     this.note = const Value.absent(),
     this.recurrence = const Value.absent(),
+    this.transfer = const Value.absent(),
   });
   StatementsCompanion.insert({
     this.id = const Value.absent(),
@@ -1198,6 +1244,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     required List<String> tags,
     required String note,
     this.recurrence = const Value.absent(),
+    this.transfer = const Value.absent(),
   }) : createdAt = Value(createdAt),
        title = Value(title),
        paymentDate = Value(paymentDate),
@@ -1217,6 +1264,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     Expression<String>? tags,
     Expression<String>? note,
     Expression<int>? recurrence,
+    Expression<int>? transfer,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1229,6 +1277,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
       if (tags != null) 'tags': tags,
       if (note != null) 'note': note,
       if (recurrence != null) 'recurrence': recurrence,
+      if (transfer != null) 'transfer': transfer,
     });
   }
 
@@ -1243,6 +1292,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     Value<List<String>>? tags,
     Value<String>? note,
     Value<int?>? recurrence,
+    Value<int?>? transfer,
   }) {
     return StatementsCompanion(
       id: id ?? this.id,
@@ -1255,6 +1305,7 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
       tags: tags ?? this.tags,
       note: note ?? this.note,
       recurrence: recurrence ?? this.recurrence,
+      transfer: transfer ?? this.transfer,
     );
   }
 
@@ -1293,6 +1344,9 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
     if (recurrence.present) {
       map['recurrence'] = Variable<int>(recurrence.value);
     }
+    if (transfer.present) {
+      map['transfer'] = Variable<int>(transfer.value);
+    }
     return map;
   }
 
@@ -1308,7 +1362,8 @@ class StatementsCompanion extends UpdateCompanion<Statement> {
           ..write('amount: $amount, ')
           ..write('tags: $tags, ')
           ..write('note: $note, ')
-          ..write('recurrence: $recurrence')
+          ..write('recurrence: $recurrence, ')
+          ..write('transfer: $transfer')
           ..write(')'))
         .toString();
   }
@@ -2174,6 +2229,7 @@ typedef $$StatementsTableCreateCompanionBuilder =
       required List<String> tags,
       required String note,
       Value<int?> recurrence,
+      Value<int?> transfer,
     });
 typedef $$StatementsTableUpdateCompanionBuilder =
     StatementsCompanion Function({
@@ -2187,6 +2243,7 @@ typedef $$StatementsTableUpdateCompanionBuilder =
       Value<List<String>> tags,
       Value<String> note,
       Value<int?> recurrence,
+      Value<int?> transfer,
     });
 
 final class $$StatementsTableReferences
@@ -2221,6 +2278,23 @@ final class $$StatementsTableReferences
       $_db.recurrences,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_recurrenceTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $StatementsTable _transferTable(_$AppDatabase db) =>
+      db.statements.createAlias('statements__transfer__statements__id');
+
+  $$StatementsTableProcessedTableManager? get transfer {
+    final $_column = $_itemColumn<int>('transfer');
+    if ($_column == null) return null;
+    final manager = $$StatementsTableTableManager(
+      $_db,
+      $_db.statements,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_transferTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -2315,6 +2389,29 @@ class $$StatementsTableFilterComposer
           }) => $$RecurrencesTableFilterComposer(
             $db: $db,
             $table: $db.recurrences,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$StatementsTableFilterComposer get transfer {
+    final $$StatementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transfer,
+      referencedTable: $db.statements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StatementsTableFilterComposer(
+            $db: $db,
+            $table: $db.statements,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -2419,6 +2516,29 @@ class $$StatementsTableOrderingComposer
     );
     return composer;
   }
+
+  $$StatementsTableOrderingComposer get transfer {
+    final $$StatementsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transfer,
+      referencedTable: $db.statements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StatementsTableOrderingComposer(
+            $db: $db,
+            $table: $db.statements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$StatementsTableAnnotationComposer
@@ -2501,6 +2621,29 @@ class $$StatementsTableAnnotationComposer
     );
     return composer;
   }
+
+  $$StatementsTableAnnotationComposer get transfer {
+    final $$StatementsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.transfer,
+      referencedTable: $db.statements,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$StatementsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.statements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$StatementsTableTableManager
@@ -2516,7 +2659,7 @@ class $$StatementsTableTableManager
           $$StatementsTableUpdateCompanionBuilder,
           (Statement, $$StatementsTableReferences),
           Statement,
-          PrefetchHooks Function({bool account, bool recurrence})
+          PrefetchHooks Function({bool account, bool recurrence, bool transfer})
         > {
   $$StatementsTableTableManager(_$AppDatabase db, $StatementsTable table)
     : super(
@@ -2541,6 +2684,7 @@ class $$StatementsTableTableManager
                 Value<List<String>> tags = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<int?> recurrence = const Value.absent(),
+                Value<int?> transfer = const Value.absent(),
               }) => StatementsCompanion(
                 id: id,
                 createdAt: createdAt,
@@ -2552,6 +2696,7 @@ class $$StatementsTableTableManager
                 tags: tags,
                 note: note,
                 recurrence: recurrence,
+                transfer: transfer,
               ),
           createCompanionCallback:
               ({
@@ -2565,6 +2710,7 @@ class $$StatementsTableTableManager
                 required List<String> tags,
                 required String note,
                 Value<int?> recurrence = const Value.absent(),
+                Value<int?> transfer = const Value.absent(),
               }) => StatementsCompanion.insert(
                 id: id,
                 createdAt: createdAt,
@@ -2576,6 +2722,7 @@ class $$StatementsTableTableManager
                 tags: tags,
                 note: note,
                 recurrence: recurrence,
+                transfer: transfer,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -2585,60 +2732,77 @@ class $$StatementsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({account = false, recurrence = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (account) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.account,
-                                referencedTable: $$StatementsTableReferences
-                                    ._accountTable(db),
-                                referencedColumn: $$StatementsTableReferences
-                                    ._accountTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-                    if (recurrence) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.recurrence,
-                                referencedTable: $$StatementsTableReferences
-                                    ._recurrenceTable(db),
-                                referencedColumn: $$StatementsTableReferences
-                                    ._recurrenceTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({account = false, recurrence = false, transfer = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (account) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.account,
+                                    referencedTable: $$StatementsTableReferences
+                                        ._accountTable(db),
+                                    referencedColumn:
+                                        $$StatementsTableReferences
+                                            ._accountTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (recurrence) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.recurrence,
+                                    referencedTable: $$StatementsTableReferences
+                                        ._recurrenceTable(db),
+                                    referencedColumn:
+                                        $$StatementsTableReferences
+                                            ._recurrenceTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (transfer) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.transfer,
+                                    referencedTable: $$StatementsTableReferences
+                                        ._transferTable(db),
+                                    referencedColumn:
+                                        $$StatementsTableReferences
+                                            ._transferTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2655,7 +2819,7 @@ typedef $$StatementsTableProcessedTableManager =
       $$StatementsTableUpdateCompanionBuilder,
       (Statement, $$StatementsTableReferences),
       Statement,
-      PrefetchHooks Function({bool account, bool recurrence})
+      PrefetchHooks Function({bool account, bool recurrence, bool transfer})
     >;
 typedef $$TagsTableCreateCompanionBuilder =
     TagsCompanion Function({
