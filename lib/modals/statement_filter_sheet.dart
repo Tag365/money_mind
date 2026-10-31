@@ -55,7 +55,7 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
             'Filter statements',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          _label('Accounts (none selected = all)'),
+          _label('Accounts'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -71,7 +71,7 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
           ),
           Row(
             children: [
-              Expanded(child: _label('Tags (none selected = all)')),
+              Expanded(child: _label('Tags')),
               const Text('Exclude'),
               Checkbox(
                 value: _excludeTags,
@@ -94,7 +94,7 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
               ],
             ),
           ),
-          _label('Income or expense (none selected = all)'),
+          _label('Income or expense'),
           Wrap(
             spacing: 8,
             children: [
