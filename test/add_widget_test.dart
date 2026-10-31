@@ -114,6 +114,63 @@ void main() {
     await closeForm(tester);
   });
 
+  /// Seeds an expense with an "Auto" tag that is not in the Tags table and
+  /// opens it in edit mode.
+  Future<Statement> openEditForm(WidgetTester tester) async {
+    final statement = (await tester.runAsync(() async {
+      accountId = await service.addAccount('Giro', AccountType.debit);
+      await service.addTag('Food', 0xFFFF9800);
+      final date = DateTime(2026, 9, 15, 12, 30);
+      await service.addStatement('Lunch', -12.5, accountId, date, date, [
+        'Food',
+        'Auto',
+      ], 'note');
+      return (await db.select(db.statements).get()).single;
+    }))!;
+    await tester.pumpWidget(MaterialApp(home: AddWidget(statement: statement)));
+    await tester.pumpAndSettle();
+    return statement;
+  }
+
+  testWidgets('edit mode shows the statement and saves changes', (
+    tester,
+  ) async {
+    await openEditForm(tester);
+    expect(find.text('Edit statement'), findsOneWidget);
+    expect(find.text('Lunch'), findsOneWidget);
+    expect(find.text('12,50'), findsOneWidget);
+    expect(find.text('Auto'), findsOneWidget);
+
+    await enterStatement(tester, title: 'Dinner', amount: '20');
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    final saved = (await statements(tester)).single;
+    expect(saved.title, 'Dinner');
+    expect(saved.amount, -20);
+    // The tag outside the Tags table survives the edit.
+    expect(saved.tags, ['Food', 'Auto']);
+    final account = await tester.runAsync(
+      () => service.getAccountById(accountId),
+    );
+    expect(account!.balance, -20);
+    await closeForm(tester);
+  });
+
+  testWidgets('cancel asks before discarding changes', (tester) async {
+    await openEditForm(tester);
+    await enterStatement(tester, title: 'Dinner');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard changes?'), findsOneWidget);
+
+    await tester.tap(find.text('Keep editing'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dinner'), findsOneWidget);
+    expect((await statements(tester)).single.title, 'Lunch');
+    await closeForm(tester);
+  });
+
   testWidgets('form is empty again after saving', (tester) async {
     await openForm(tester);
     await enterStatement(tester);

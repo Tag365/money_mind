@@ -6,6 +6,7 @@ import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/list/grouping.dart';
 import 'package:money_mind/list/statement_filter.dart';
+import 'package:money_mind/modals/statement_details_sheet.dart';
 import 'package:money_mind/modals/statement_filter_sheet.dart';
 
 class ListWidget extends StatefulWidget {
@@ -219,6 +220,13 @@ class _StatementTile extends StatelessWidget {
     final statement = row.statement;
     final balance = row.balance;
     return ListTile(
+      onTap: () => showModalBottomSheet(
+        isScrollControlled: true,
+        showDragHandle: true,
+        context: context,
+        builder: (context) =>
+            StatementDetailsSheet(row, accountNames[statement.account]),
+      ),
       title: Text(statement.title, overflow: TextOverflow.ellipsis),
       isThreeLine: statement.tags.isNotEmpty,
       subtitle: Column(

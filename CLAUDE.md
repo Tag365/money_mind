@@ -27,7 +27,7 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 - **Data access**: all DB access goes through the `DatabaseService.instance` singleton (`lib/database/database_service.dart`), which lazily creates `AppDatabase`. Widgets subscribe to Drift `watch...()` streams, so writes refresh the UI automatically, with no manual reloads.
 - **Schema** (`lib/database/app_database.dart`): tables `Statements`, `Accounts`, `Tags`. `schemaVersion` is 3; bump it and add an `onUpgrade` step for schema changes. Indexes on `payment_date` / `(account, payment_date)` are created via raw SQL in the migration. The DB file lives in the app support directory.
 - **Invariants**:
-  - `Accounts.balance` is denormalized. Insert statements via `addStatement`/`addStatements`, which update balances in the same transaction with an SQL-side increment. Any future update or delete path for statements must adjust balances too.
+  - `Accounts.balance` is denormalized. Change statements only via `addStatement`/`addStatements`/`updateStatement`/`deleteStatement`, which adjust balances in the same transaction with an SQL-side increment (`_addToBalance`). Any new write path for statements must do the same.
   - `Statements.tags` is a comma-joined string via `ListConverter`, so tags must not contain commas.
   - Monthly/yearly totals (`watchTotals`) are aggregated in SQLite and grouped by local time, not UTC.
 - **Statements list** is an accordion of months (`watchTotals`); an expanded month loads its statements via `watchStatementsBetween` and shows them grouped by day (`groupByDay`).

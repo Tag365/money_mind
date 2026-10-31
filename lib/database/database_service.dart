@@ -172,15 +172,46 @@ class DatabaseService {
       });
       for (final MapEntry(key: accountId, value: change)
           in balanceChanges.entries) {
-        // Let SQLite add to the current value instead of read-modify-write.
-        await (database.update(
-          database.accounts,
-        )..where((tbl) => tbl.id.equals(accountId))).write(
-          AccountsCompanion.custom(
-            balance: database.accounts.balance + Variable(change),
-          ),
-        );
+        await _addToBalance(accountId, change);
       }
+    });
+  }
+
+  /// Replaces the stored statement with the same id by [updated] and moves the
+  /// amount between account balances accordingly.
+  Future<void> updateStatement(Statement updated) async {
+    await database.transaction(() async {
+      // The stored row, not the caller's copy, is what the balances contain.
+      final old = await (database.select(
+        database.statements,
+      )..where((tbl) => tbl.id.equals(updated.id))).getSingleOrNull();
+      if (old == null) return;
+      await database.update(database.statements).replace(updated);
+      await _addToBalance(old.account, -old.amount);
+      await _addToBalance(updated.account, updated.amount);
+    });
+  }
+
+  // Lets SQLite add to the current value instead of read-modify-write.
+  Future<void> _addToBalance(int accountId, double change) async {
+    await (database.update(
+      database.accounts,
+    )..where((tbl) => tbl.id.equals(accountId))).write(
+      AccountsCompanion.custom(
+        balance: database.accounts.balance + Variable(change),
+      ),
+    );
+  }
+
+  /// Deletes [statement] and takes its amount back out of the account balance.
+  Future<void> deleteStatement(Statement statement) async {
+    await database.transaction(() async {
+      final deleted = await (database.delete(
+        database.statements,
+      )..where((tbl) => tbl.id.equals(statement.id))).go();
+      // Already gone (e.g. tapped twice): the balance was adjusted back then.
+      if (deleted == 0) return;
+      await _addToBalance(statement.account, -statement.amount);
     });
   }
 
