@@ -17,6 +17,14 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # NDK r28c (flutter.ndkVersion) isn't on the runner image; Gradle downloads it on a cache miss.
+      # Update the version when a Flutter upgrade changes flutter.ndkVersion.
+      - uses: actions/cache@v6
+        with:
+          # $ANDROID_HOME on ubuntu-latest; the runner's shell env isn't visible to ${{ env }}.
+          path: /usr/local/lib/android/sdk/ndk/28.2.13676358
+          key: ndk-${{ runner.os }}-28.2.13676358
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.9

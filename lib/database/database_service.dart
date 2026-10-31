@@ -33,6 +33,11 @@ class PeriodTotal {
 
 typedef StatementWithBalance = ({Statement statement, double? balance});
 
+/// A payment after now. [date] is the statement's payment date, or for a
+/// series the date of its next occurrence, which [statement] is the template
+/// of.
+typedef UpcomingPayment = ({Statement statement, DateTime date});
+
 class DatabaseService {
   // Singleton pattern
   DatabaseService._internal();
@@ -501,6 +506,48 @@ class DatabaseService {
     });
   }
 
+  /// The next [limit] payments, soonest first: statements dated in the future
+  /// and, for each series without one, its next occurrence (not created yet,
+  /// so it uses the newest statement of the series as a template).
+  Stream<List<UpcomingPayment>> watchUpcoming({int limit = 5}) {
+    final tbl = database.statements;
+    final latest = database.alias(database.statements, 'latest');
+    final recurrences = database.recurrences;
+    final latestOfSeries = subqueryExpression<int>(
+      database.selectOnly(latest)
+        ..addColumns([latest.id])
+        ..where(latest.recurrence.equalsExp(tbl.recurrence))
+        ..orderBy([
+          OrderingTerm.desc(latest.paymentDate),
+          OrderingTerm.desc(latest.id),
+        ])
+        ..limit(1),
+    );
+    final query =
+        database.select(tbl).join([
+          leftOuterJoin(recurrences, recurrences.id.equalsExp(tbl.recurrence)),
+        ])..where(
+          tbl.paymentDate.isBiggerThan(currentDateAndTime) |
+              tbl.id.equalsExp(latestOfSeries),
+        );
+    // Only rechecked when a table changes, not when a date passes.
+    return query.watch().map((rows) {
+      final now = DateTime.now();
+      final upcoming = <UpcomingPayment>[];
+      for (final row in rows) {
+        final statement = row.readTable(tbl);
+        final r = row.readTableOrNull(recurrences);
+        final date = statement.paymentDate.isAfter(now) || r == null
+            ? statement.paymentDate
+            : r.unit.occurrence(r.start, r.every, r.generated);
+        // A past due occurrence is created by addDueRecurrences instead.
+        if (date.isAfter(now)) upcoming.add((statement: statement, date: date));
+      }
+      upcoming.sort((a, b) => a.date.compareTo(b.date));
+      return upcoming.take(limit).toList();
+    });
+  }
+
   /// SQL condition for statements that pass [filter].
   Expression<bool> _matches(StatementFilter filter) {
     final tbl = database.statements;
@@ -581,10 +628,12 @@ class DatabaseService {
 
   /// Totals per month (or per year when [yearly] is true) of the statements
   /// that pass [filter], newest first. Aggregated by SQLite, so no statement
-  /// rows are loaded into Dart.
+  /// rows are loaded into Dart. Without [transfers], money moved between
+  /// accounts counts as neither income nor expense.
   Stream<List<PeriodTotal>> watchTotals({
     required bool yearly,
     StatementFilter filter = const StatementFilter(),
+    bool transfers = true,
   }) {
     final tbl = database.statements;
     // Group by local time, otherwise late-evening statements on the last day
@@ -600,7 +649,10 @@ class DatabaseService {
     final groupColumns = yearly ? [year] : [year, month];
     final query = database.selectOnly(tbl)
       ..addColumns([...groupColumns, total, count, income, expense])
-      ..where(_matches(filter))
+      ..where(
+        _matches(filter) &
+            (transfers ? const Constant(true) : tbl.transfer.isNull()),
+      )
       ..groupBy(groupColumns)
       ..orderBy([for (final c in groupColumns) OrderingTerm.desc(c)]);
 
