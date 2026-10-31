@@ -3,11 +3,12 @@ import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
 
 /// Income, expenses and net of the current month; zeros when [month] is null
-/// (no statements yet).
+/// (no statements yet). Tapping it calls [onTap].
 class MonthSummaryCard extends StatelessWidget {
   final PeriodTotal? month;
+  final VoidCallback onTap;
 
-  const MonthSummaryCard(this.month, {super.key});
+  const MonthSummaryCard(this.month, {super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -23,33 +24,37 @@ class MonthSummaryCard extends StatelessWidget {
     ];
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 12,
-          children: [
-            Text(
-              MaterialLocalizations.of(
-                context,
-              ).formatMonthYear(DateTime(now.year, now.month)),
-              style: text.titleMedium,
-            ),
-            Row(
-              children: [
-                for (final (name, amount) in values)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name, style: label),
-                        MoneyText(amount),
-                      ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 12,
+            children: [
+              Text(
+                MaterialLocalizations.of(
+                  context,
+                ).formatMonthYear(DateTime(now.year, now.month)),
+                style: text.titleMedium,
+              ),
+              Row(
+                children: [
+                  for (final (name, amount) in values)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: label),
+                          MoneyText(amount),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

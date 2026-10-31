@@ -9,6 +9,8 @@ import 'package:money_mind/features/accounts/account_form.dart';
 import 'package:money_mind/features/accounts/transfer_form.dart';
 import 'package:money_mind/features/accounts/widgets/account_tile.dart';
 import 'package:money_mind/features/accounts/widgets/no_accounts_hint.dart';
+import 'package:money_mind/features/statements/statement_filter.dart';
+import 'package:money_mind/features/statements/statement_list.dart';
 
 import 'package:money_mind/database/app_database.dart';
 
@@ -121,7 +123,18 @@ class _AccountState extends State<AccountWidget> {
       child: ListView(
         children: [
           for (final account in accounts)
-            AccountTile(account, onClose: () => _closeAccount(account)),
+            AccountTile(
+              account,
+              onClose: () => _closeAccount(account),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ListWidget(
+                    title: account.name,
+                    filter: StatementFilter(accounts: {account.id}),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

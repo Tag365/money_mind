@@ -23,7 +23,7 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SlidableAutoCloseBehavior(
-            child: AccountTile(account, onClose: onClose),
+            child: AccountTile(account, onClose: onClose, onTap: () {}),
           ),
         ),
       ),

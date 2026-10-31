@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:money_mind/database/app_database.dart';
-import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/recurrences.dart';
 
 /// "Every month", "Every 2 weeks", ...
@@ -10,19 +9,23 @@ String describeInterval(RecurrenceUnit unit, int every) {
   return every == 1 ? 'Every $name' : 'Every $every ${name}s';
 }
 
-/// Turns repetition of [statement] on, changes its interval or turns it off.
-/// [latest] is the newest statement of its series (see
-/// `DatabaseService.latestInSeries`), which a new interval counts from.
+/// Picks how a statement repeats: [onSave] gets the chosen interval and
+/// [onTurnOff], offered while [recurrence] is set, stops it. [from] is the
+/// payment date a new interval counts from: that of the newest statement of
+/// the series (see `DatabaseService.latestInSeries`).
 class RecurrenceDialog extends StatefulWidget {
-  final Statement statement;
-  final Statement latest;
+  final DateTime from;
   final Recurrence? recurrence;
+  final Future<void> Function(RecurrenceUnit unit, int every, bool ahead)
+  onSave;
+  final Future<void> Function() onTurnOff;
 
-  const RecurrenceDialog(
-    this.statement,
-    this.latest,
-    this.recurrence, {
+  const RecurrenceDialog({
     super.key,
+    required this.from,
+    required this.recurrence,
+    required this.onSave,
+    required this.onTurnOff,
   });
 
   @override
@@ -48,29 +51,24 @@ class _RecurrenceDialogState extends State<RecurrenceDialog> {
     if (r != null && r.unit == _unit && r.every == every) {
       return r.unit.occurrence(r.start, r.every, r.generated);
     }
-    return _unit.occurrence(widget.latest.paymentDate, every, 1);
+    return _unit.occurrence(widget.from, every, 1);
   }
 
-  // Set for good: the dialog closes after saving. A second tap would pass the
-  // stale statement again and start a second series.
+  // Set for good: the dialog closes after saving. A second tap would save
+  // again with stale data and could start a second series.
   bool _saving = false;
 
   Future<void> _save() async {
     final navigator = Navigator.of(context);
     setState(() => _saving = true);
-    await DatabaseService.instance.setRecurrence(
-      widget.statement,
-      _unit,
-      _parsedEvery!,
-      ahead: _ahead,
-    );
+    await widget.onSave(_unit, _parsedEvery!, _ahead);
     navigator.pop();
   }
 
   Future<void> _turnOff() async {
     final navigator = Navigator.of(context);
     setState(() => _saving = true);
-    await DatabaseService.instance.stopRecurrence(widget.recurrence!.id);
+    await widget.onTurnOff();
     navigator.pop();
   }
 

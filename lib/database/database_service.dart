@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:drift/extensions/native.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/models/account_type.dart';
@@ -153,7 +154,8 @@ class DatabaseService {
     }
   }
 
-  Future<void> addStatement(
+  /// Inserts one statement and returns it with its id.
+  Future<Statement> addStatement(
     String title,
     double amount,
     int accountId,
@@ -161,19 +163,49 @@ class DatabaseService {
     DateTime useDate,
     List<String> tags,
     String notes,
-  ) async {
-    await addStatements([
-      StatementsCompanion(
-        title: Value(title),
-        createdAt: Value(DateTime.now()),
-        paymentDate: Value(paymentDate),
-        account: Value(accountId),
-        useDate: Value(useDate),
-        amount: Value(amount),
-        tags: Value(tags),
-        note: Value(notes),
-      ),
-    ]);
+  ) {
+    return database.transaction(() async {
+      final statement = await database
+          .into(database.statements)
+          .insertReturning(
+            StatementsCompanion(
+              title: Value(title),
+              createdAt: Value(DateTime.now()),
+              paymentDate: Value(paymentDate),
+              account: Value(accountId),
+              useDate: Value(useDate),
+              amount: Value(amount),
+              tags: Value(tags),
+              note: Value(notes),
+            ),
+          );
+      await _addToBalance(accountId, amount);
+      return statement;
+    });
+  }
+
+  /// For each title containing [query], its newest statement; the most used
+  /// titles first. Transfers and auto-generated statements are left out.
+  /// Fills in the Create form.
+  Future<List<Statement>> titleSuggestions(String query, {int limit = 5}) {
+    final tbl = database.statements;
+    final uses = countAll();
+    // With exactly one max() SQLite takes the other columns of each group
+    // from the row with the max, i.e. the newest statement of the title.
+    final newest = tbl.paymentDate.max();
+    // Commas around the joined list make a tag match only whole entries.
+    final tagList = const Constant(',') + tbl.tags + const Constant(',');
+    final select = database.select(tbl).addColumns([uses, newest])
+      ..where(
+        // Unlike LIKE, also ignores the case of umlauts.
+        tbl.title.containsCase(query) &
+            tbl.transfer.isNull() &
+            tagList.like('%,$autoTag,%').not(),
+      )
+      ..groupBy([tbl.title])
+      ..orderBy([OrderingTerm.desc(uses), OrderingTerm.desc(tbl.paymentDate)])
+      ..limit(limit);
+    return select.map((row) => row.readTable(tbl)).get();
   }
 
   /// Inserts all [statements] in one transaction and updates the balance of
@@ -244,6 +276,9 @@ class DatabaseService {
   }
 
   static const transferTag = 'Transfer';
+
+  /// Tag of the statements the app writes itself, like an initial balance.
+  static const autoTag = 'Auto-generated';
 
   /// Replaces the stored statement with the same id by [updated] and moves the
   /// amount between account balances accordingly. Upcoming statements of its

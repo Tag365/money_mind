@@ -7,16 +7,37 @@ import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/common/time_button.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
+import 'package:money_mind/database/models/recurrences.dart';
+import 'package:money_mind/features/statements/recurrence_dialog.dart';
 import 'package:money_mind/features/statements/widgets/amount_field.dart';
+import 'package:money_mind/features/statements/widgets/info_tile.dart';
+import 'package:money_mind/features/statements/widgets/title_suggestions.dart';
 import 'package:money_mind/features/tags/tag_select_dialog.dart';
 import 'package:money_mind/features/tags/widgets/tags_field.dart';
 
-/// Creates a statement, or edits [statement] when it is given. In edit mode it
-/// is meant to be pushed as its own page and pops with true after saving.
+typedef _Repeat = ({RecurrenceUnit unit, int every, bool ahead});
+
+/// "12,50" for -12.5: how the amount field shows a stored amount.
+String _amountText(double amount) =>
+    amount.abs().toStringAsFixed(2).replaceAll('.', ',');
+
+/// Creates a statement, or edits [statement] when it is given. [copyOf]
+/// starts a new statement filled in from that one but dated now. Both are
+/// meant to be pushed as their own page, which pops with true after saving.
+///
+/// Whenever [active] turns true, an unpicked date moves to now, so the
+/// Create tab never offers a stale time.
 class AddWidget extends StatefulWidget {
   final Statement? statement;
+  final Statement? copyOf;
+  final bool active;
 
-  const AddWidget({super.key, this.statement});
+  const AddWidget({
+    super.key,
+    this.statement,
+    this.copyOf,
+    this.active = false,
+  });
 
   @override
   State<AddWidget> createState() => _AddWidgetState();
@@ -27,32 +48,54 @@ class _AddWidgetState extends State<AddWidget> {
   final titleController = TextEditingController();
   final amountController = TextEditingController();
   final noteController = TextEditingController();
+  final _titleFocus = FocusNode();
   DatabaseService databaseService = DatabaseService.instance;
 
   late final Stream<List<Account>> _accounts = databaseService.watchAccounts();
   late final Stream<List<Tag>> _tags = databaseService.watchTags();
 
   DateTime date = DateTime.now();
+
+  /// Set when the date was picked, so it is kept for the next statement
+  /// instead of following the clock.
+  bool _datePicked = false;
   int? accountId;
   bool expense = true;
   final Set<String> selectedTags = {};
+  _Repeat? _repeat;
   bool _saving = false;
+
+  bool get _editing => widget.statement != null;
 
   @override
   void initState() {
     super.initState();
-    final s = widget.statement;
-    if (s == null) return;
-    titleController.text = s.title;
-    amountController.text = s.amount
-        .abs()
-        .toStringAsFixed(2)
-        .replaceAll('.', ',');
-    noteController.text = s.note;
-    date = s.paymentDate.toLocal();
-    accountId = s.account;
-    expense = s.amount < 0;
-    selectedTags.addAll(s.tags);
+    final s = widget.statement ?? widget.copyOf;
+    if (s != null) {
+      titleController.text = s.title;
+      amountController.text = _amountText(s.amount);
+      noteController.text = s.note;
+      accountId = s.account;
+      expense = s.amount < 0;
+      selectedTags.addAll(s.tags);
+    }
+    if (_editing) date = widget.statement!.paymentDate.toLocal();
+  }
+
+  @override
+  void didUpdateWidget(AddWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The tab may have been opened hours ago.
+    if (widget.active && !oldWidget.active && !_editing && !_datePicked) {
+      date = DateTime.now();
+    }
+  }
+
+  void _pickDate(DateTime picked) {
+    setState(() {
+      date = picked;
+      _datePicked = true;
+    });
   }
 
   /// The amount as stored: negative for expenses, null while invalid.
@@ -96,14 +139,31 @@ class _AddWidgetState extends State<AddWidget> {
     if (discard && mounted) Navigator.pop(context, false);
   }
 
-  void _clear() {
+  /// Empties the form; a picked date stays when [keepDate] is set.
+  void _clear({bool keepDate = false}) {
     titleController.clear();
     amountController.clear();
     noteController.clear();
     setState(() {
-      date = DateTime.now();
+      if (!keepDate || !_datePicked) {
+        date = DateTime.now();
+        _datePicked = false;
+      }
       expense = true;
       selectedTags.clear();
+      _repeat = null;
+    });
+  }
+
+  /// Fills in the form from an earlier statement with the picked title, but
+  /// not its amount, which differs most of the time.
+  void _fillFrom(Statement s) {
+    setState(() {
+      accountId = s.account;
+      expense = s.amount < 0;
+      selectedTags
+        ..clear()
+        ..addAll(s.tags);
     });
   }
 
@@ -137,7 +197,7 @@ class _AddWidgetState extends State<AddWidget> {
       return;
     }
     final double amount = evaluateAmount(amountController.text)!;
-    await databaseService.addStatement(
+    final statement = await databaseService.addStatement(
       titleController.text,
       expense ? -amount : amount,
       accountId!,
@@ -146,8 +206,20 @@ class _AddWidgetState extends State<AddWidget> {
       selectedTags.toList(),
       noteController.text,
     );
+    if (_repeat case final r?) {
+      await databaseService.setRecurrence(
+        statement,
+        r.unit,
+        r.every,
+        ahead: r.ahead,
+      );
+    }
     if (!mounted) return;
-    _clear();
+    if (widget.copyOf != null) {
+      Navigator.pop(context, true);
+      return;
+    }
+    _clear(keepDate: true);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Statement saved')));
@@ -158,6 +230,7 @@ class _AddWidgetState extends State<AddWidget> {
     titleController.dispose();
     amountController.dispose();
     noteController.dispose();
+    _titleFocus.dispose();
     super.dispose();
   }
 
@@ -190,17 +263,51 @@ class _AddWidgetState extends State<AddWidget> {
     );
   }
 
+  Widget _titleField() {
+    return Autocomplete<Statement>(
+      textEditingController: titleController,
+      focusNode: _titleFocus,
+      displayStringForOption: (s) => s.title,
+      // Editing keeps the statement's own values, so nothing to fill in.
+      optionsBuilder: (value) {
+        final query = value.text.trim();
+        if (_editing || query.isEmpty) return const <Statement>[];
+        return databaseService.titleSuggestions(query);
+      },
+      onSelected: _fillFrom,
+      optionsViewBuilder: (context, onSelected, options) =>
+          TitleSuggestions(options: options, onSelected: onSelected),
+      fieldViewBuilder: (context, controller, focusNode, onSubmitted) =>
+          TextFormField(
+            controller: controller,
+            focusNode: focusNode,
+            onFieldSubmitted: (_) => onSubmitted(),
+            style: Theme.of(context).textTheme.titleMedium,
+            decoration: const InputDecoration(
+              labelText: 'Title',
+              prefixIcon: Icon(Icons.short_text),
+            ),
+            validator: (value) =>
+                value == null || value.isEmpty ? 'Please add a Title' : null,
+          ),
+    );
+  }
+
   Widget _tagsField() {
     return StreamBuilder<List<Tag>>(
       stream: _tags,
       builder: (context, snapshot) {
         final tags = snapshot.data ?? [];
-        final original = widget.statement?.tags ?? const [];
+        final original = (widget.statement ?? widget.copyOf)?.tags ?? const [];
         // Drop selections whose tag was renamed or deleted in Manage tags,
-        // but keep the edited statement's own tags even if not in the table.
-        selectedTags.retainWhere(
-          (name) => tags.any((t) => t.name == name) || original.contains(name),
-        );
+        // but keep the edited or copied statement's own tags even if not in
+        // the table. Not before the tags have loaded, which would drop all.
+        if (snapshot.hasData) {
+          selectedTags.retainWhere(
+            (name) =>
+                tags.any((t) => t.name == name) || original.contains(name),
+          );
+        }
         return TagsField(
           tags: tags,
           selected: selectedTags,
@@ -223,23 +330,50 @@ class _AddWidgetState extends State<AddWidget> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final color = expense ? expenseColor : incomeColor;
-    final editing = widget.statement != null;
-    // Back, the close button and Cancel all ask before dropping changes.
-    return PopScope(
-      canPop: !editing,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _closeEdit();
-      },
-      child: GlassBackground(child: _form(context, color, editing)),
+  Future<void> _pickRepeat() async {
+    final r = _repeat;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => RecurrenceDialog(
+        from: date,
+        // Not saved yet, so a series that starts at this statement.
+        recurrence: r == null
+            ? null
+            : Recurrence(
+                id: 0,
+                start: date,
+                unit: r.unit,
+                every: r.every,
+                generated: 1,
+                ahead: r.ahead,
+              ),
+        onSave: (unit, every, ahead) async =>
+            setState(() => _repeat = (unit: unit, every: every, ahead: ahead)),
+        onTurnOff: () async => setState(() => _repeat = null),
+      ),
     );
   }
 
-  Widget _form(BuildContext context, Color color, bool editing) {
+  @override
+  Widget build(BuildContext context) {
+    final color = expense ? expenseColor : incomeColor;
+    // Back, the close button and Cancel all ask before dropping changes.
+    return PopScope(
+      canPop: !_editing,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeEdit();
+      },
+      child: GlassBackground(child: _form(context, color)),
+    );
+  }
+
+  Widget _form(BuildContext context, Color color) {
+    final pushed = _editing || widget.copyOf != null;
+    final repeat = _repeat;
     return Scaffold(
-      appBar: AppBar(title: Text(editing ? 'Edit statement' : 'New statement')),
+      appBar: AppBar(
+        title: Text(_editing ? 'Edit statement' : 'New statement'),
+      ),
       // Pinned above the keyboard and the tab bar.
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -252,8 +386,8 @@ class _AddWidgetState extends State<AddWidget> {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                   ),
-                  onPressed: editing ? _closeEdit : _clear,
-                  child: Text(editing ? 'Cancel' : 'Clear'),
+                  onPressed: pushed ? _closeEdit : _clear,
+                  child: Text(pushed ? 'Cancel' : 'Clear'),
                 ),
               ),
               Expanded(
@@ -263,7 +397,7 @@ class _AddWidgetState extends State<AddWidget> {
                     minimumSize: const Size.fromHeight(52),
                   ),
                   onPressed: _saving ? null : _save,
-                  child: Text(editing ? 'Save changes' : 'Save'),
+                  child: Text(_editing ? 'Save changes' : 'Save'),
                 ),
               ),
             ],
@@ -281,6 +415,7 @@ class _AddWidgetState extends State<AddWidget> {
               children: [
                 AmountField(
                   controller: amountController,
+                  onNext: _titleFocus.requestFocus,
                   color: color,
                   trailing: FilledButton.tonal(
                     style: FilledButton.styleFrom(
@@ -301,14 +436,8 @@ class _AddWidgetState extends State<AddWidget> {
                     padding: const EdgeInsets.all(8),
                     child: Row(
                       children: [
-                        DateButton(
-                          date,
-                          onChanged: (d) => setState(() => date = d),
-                        ),
-                        TimeButton(
-                          date,
-                          onChanged: (d) => setState(() => date = d),
-                        ),
+                        DateButton(date, onChanged: _pickDate),
+                        TimeButton(date, onChanged: _pickDate),
                         const SizedBox(width: 8),
                         const Icon(Icons.account_balance_wallet_outlined),
                         const SizedBox(width: 8),
@@ -324,23 +453,29 @@ class _AddWidgetState extends State<AddWidget> {
                     child: Column(
                       spacing: 12,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextFormField(
-                          controller: titleController,
-                          style: Theme.of(context).textTheme.titleMedium,
-                          decoration: const InputDecoration(
-                            labelText: 'Title',
-                            prefixIcon: Icon(Icons.short_text),
-                          ),
-                          validator: (value) => value == null || value.isEmpty
-                              ? 'Please add a Title'
-                              : null,
-                        ),
-                        _tagsField(),
-                      ],
+                      children: [_titleField(), _tagsField()],
                     ),
                   ),
                 ),
+                // An edited statement's series is changed in its details.
+                if (!_editing)
+                  Card(
+                    margin: EdgeInsets.zero,
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: InfoTile(
+                        Icons.repeat,
+                        'Repeats',
+                        Text(
+                          repeat == null
+                              ? 'Never'
+                              : describeInterval(repeat.unit, repeat.every),
+                        ),
+                        onTap: _pickRepeat,
+                      ),
+                    ),
+                  ),
                 // Optional, so plain and below the card.
                 TextFormField(
                   controller: noteController,

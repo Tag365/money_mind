@@ -7,9 +7,12 @@ import 'package:money_mind/features/home/widgets/month_summary_card.dart';
 import 'package:money_mind/features/home/widgets/upcoming_card.dart';
 
 /// Overview at a glance: total balance, this month so far and what is due
-/// next.
+/// next. Tapping the total or the month calls [onOpenTab] with the index of
+/// the Accounts or Statements tab.
 class HomeWidget extends StatefulWidget {
-  const HomeWidget({super.key});
+  final ValueChanged<int> onOpenTab;
+
+  const HomeWidget({super.key, required this.onOpenTab});
 
   @override
   State<HomeWidget> createState() => _HomeState();
@@ -52,7 +55,7 @@ class _HomeState extends State<HomeWidget> {
         return ListView(
           padding: const EdgeInsets.only(bottom: 16),
           children: [
-            TotalBalanceCard(accounts),
+            TotalBalanceCard(accounts, onTap: () => widget.onOpenTab(3)),
             StreamBuilder(
               stream: _totals,
               builder: (context, snapshot) {
@@ -62,7 +65,10 @@ class _HomeState extends State<HomeWidget> {
                 final month = snapshot.data
                     ?.where((p) => p.start == DateTime(now.year, now.month))
                     .firstOrNull;
-                return MonthSummaryCard(month);
+                return MonthSummaryCard(
+                  month,
+                  onTap: () => widget.onOpenTab(2),
+                );
               },
             ),
             StreamBuilder(
