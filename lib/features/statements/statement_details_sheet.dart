@@ -2,11 +2,12 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import 'package:money_mind/common/money_text.dart';
-import 'package:money_mind/features/tags/tag_label.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/features/statements/recurrence_dialog.dart';
 import 'package:money_mind/features/statements/add_statement.dart';
+import 'package:money_mind/features/statements/recurrence_dialog.dart';
+import 'package:money_mind/features/statements/widgets/info_tile.dart';
+import 'package:money_mind/features/tags/widgets/tag_labels.dart';
 
 /// Shows all information of one statement, with edit and delete actions.
 class StatementDetailsSheet extends StatefulWidget {
@@ -20,28 +21,10 @@ class StatementDetailsSheet extends StatefulWidget {
 }
 
 class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
-  late final Stream<List<Tag>> _tags = DatabaseService.instance.watchTags();
   late final Stream<Recurrence?> _recurrence = DatabaseService.instance
       .watchRecurrence(_statement.id);
 
   Statement get _statement => widget.row.statement;
-
-  Widget _info(
-    IconData icon,
-    String label,
-    Widget value, {
-    VoidCallback? onTap,
-  }) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    onTap: onTap,
-    trailing: onTap == null ? null : const Icon(Icons.chevron_right),
-    leading: Icon(icon),
-    title: Text(label, style: Theme.of(context).textTheme.labelMedium),
-    subtitle: DefaultTextStyle.merge(
-      style: Theme.of(context).textTheme.bodyLarge,
-      child: value,
-    ),
-  );
 
   /// Closes the sheet and opens the Create form in edit mode as its own page.
   Future<void> _edit() async {
@@ -126,7 +109,7 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
           const SizedBox(height: 4),
           MoneyText(statement.amount, style: textTheme.headlineMedium),
           const SizedBox(height: 8),
-          _info(
+          InfoTile(
             Icons.event,
             'Payment date',
             // ISO 8601 in local time, to the minute: 2026-10-31 14:00.
@@ -135,12 +118,12 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             ),
           ),
           if (!sameDay)
-            _info(
+            InfoTile(
               Icons.event_available,
               'Use date',
               Text(MaterialLocalizations.of(context).formatFullDate(used)),
             ),
-          _info(
+          InfoTile(
             Icons.account_balance_wallet_outlined,
             'Account',
             Text(
@@ -151,39 +134,16 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
             ),
           ),
           if (statement.tags.isNotEmpty)
-            _info(
+            InfoTile(
               Icons.sell_outlined,
               'Tags',
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: StreamBuilder(
-                  stream: _tags,
-                  builder: (context, snapshot) {
-                    final colors = {
-                      for (final t in snapshot.data ?? <Tag>[])
-                        t.name: Color(t.color),
-                    };
-                    return Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final tag in statement.tags)
-                          TagLabel(
-                            tag,
-                            // Tags not in the Tags table (e.g. "Auto-generated").
-                            colors[tag] ??
-                                Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
-                          ),
-                      ],
-                    );
-                  },
-                ),
+                child: TagLabels(statement.tags),
               ),
             ),
           if (statement.note.isNotEmpty)
-            _info(Icons.notes, 'Note', Text(statement.note)),
+            InfoTile(Icons.notes, 'Note', Text(statement.note)),
           // shortcut: a repeated copy would book only one side of a transfer,
           // so transfers cannot repeat until series copy both sides.
           if (statement.transfer == null)
@@ -191,7 +151,7 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
               stream: _recurrence,
               builder: (context, snapshot) {
                 final recurrence = snapshot.data;
-                return _info(
+                return InfoTile(
                   Icons.repeat,
                   'Repeats',
                   Text(
