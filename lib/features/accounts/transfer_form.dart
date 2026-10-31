@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:money_mind/common/amount_expression.dart';
+import 'package:money_mind/common/date_button.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 
@@ -21,26 +22,6 @@ class _TransferFormState extends State<TransferForm> {
   DateTime date = DateTime.now();
   // Set for good: the sheet closes after saving.
   bool _saving = false;
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked == null) return;
-    // Keep the time of day, only the calendar day changes.
-    setState(() {
-      date = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        date.hour,
-        date.minute,
-      );
-    });
-  }
 
   Future<void> _save() async {
     if (_saving || !_formKey.currentState!.validate()) return;
@@ -123,10 +104,9 @@ class _TransferFormState extends State<TransferForm> {
             ),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _pickDate,
-                icon: const Icon(Icons.calendar_today),
-                label: Text(date.toIso8601String().substring(0, 10)),
+              child: DateButton(
+                date,
+                onChanged: (d) => setState(() => date = d),
               ),
             ),
             FilledButton(

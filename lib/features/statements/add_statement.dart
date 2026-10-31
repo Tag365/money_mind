@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:money_mind/common/amount_expression.dart';
-import 'package:money_mind/features/tags/tag_label.dart';
+import 'package:money_mind/common/date_button.dart';
+import 'package:money_mind/common/time_button.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/features/tags/manage_tags.dart';
+import 'package:money_mind/features/statements/widgets/amount_field.dart';
+import 'package:money_mind/features/tags/tag_select_dialog.dart';
+import 'package:money_mind/features/tags/widgets/tags_field.dart';
 
 /// Creates a statement, or edits [statement] when it is given. In edit mode it
 /// is meant to be pushed as its own page and pops with true after saving.
@@ -91,43 +94,6 @@ class _AddWidgetState extends State<AddWidget> {
     if (discard && mounted) Navigator.pop(context, false);
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked == null) return;
-    // Keep the time of day, only the calendar day changes.
-    setState(() {
-      date = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        date.hour,
-        date.minute,
-      );
-    });
-  }
-
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(date),
-    );
-    if (picked == null) return;
-    setState(() {
-      date = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        picked.hour,
-        picked.minute,
-      );
-    });
-  }
-
   void _clear() {
     titleController.clear();
     amountController.clear();
@@ -137,16 +103,6 @@ class _AddWidgetState extends State<AddWidget> {
       expense = true;
       selectedTags.clear();
     });
-  }
-
-  /// "= 19.70" below the field while it holds more than one charge.
-  String? _amountTotal() {
-    final text = amountController.text.trim();
-    if (!text.substring(text.isEmpty ? 0 : 1).contains(RegExp('[+-]'))) {
-      return null;
-    }
-    final total = evaluateAmount(text);
-    return total == null ? null : '= ${total.toStringAsFixed(2)}';
   }
 
   // A second tap while the first save runs would save twice.
@@ -243,91 +199,19 @@ class _AddWidgetState extends State<AddWidget> {
         selectedTags.retainWhere(
           (name) => tags.any((t) => t.name == name) || original.contains(name),
         );
-        final unknown = selectedTags.where(
-          (name) => !tags.any((t) => t.name == name),
-        );
-        return InkWell(
-          borderRadius: BorderRadius.circular(12),
+        return TagsField(
+          tags: tags,
+          selected: selectedTags,
           onTap: () => _selectTags(tags),
-          child: InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Tags',
-              prefixIcon: Icon(Icons.label_outline),
-              suffixIcon: Icon(Icons.arrow_drop_down),
-            ),
-            isEmpty: selectedTags.isEmpty,
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final tag in tags)
-                  if (selectedTags.contains(tag.name)) _tagLabel(tag),
-                for (final name in unknown)
-                  TagLabel(
-                    name,
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
-                  ),
-              ],
-            ),
-          ),
         );
       },
     );
   }
 
   Future<void> _selectTags(List<Tag> tags) async {
-    final selection = {...selectedTags};
     final result = await showDialog<Set<String>>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Select tags'),
-          contentPadding: const EdgeInsets.symmetric(vertical: 16),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: tags.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 24),
-                    child: Text('No tags yet. Add them in Manage tags.'),
-                  )
-                : ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final tag in tags)
-                        CheckboxListTile(
-                          title: _tagLabel(tag, expand: true),
-                          value: selection.contains(tag.name),
-                          onChanged: (checked) => setDialogState(() {
-                            checked!
-                                ? selection.add(tag.name)
-                                : selection.remove(tag.name);
-                          }),
-                        ),
-                    ],
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  this.context,
-                  MaterialPageRoute(builder: (_) => const ManageTagsScreen()),
-                );
-              },
-              child: const Text('Manage tags'),
-            ),
-            TextButton(
-              onPressed: () => setDialogState(selection.clear),
-              child: const Text('Clear'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, selection),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => TagSelectDialog(tags: tags, selected: selectedTags),
     );
     if (result == null) return;
     setState(() {
@@ -337,15 +221,10 @@ class _AddWidgetState extends State<AddWidget> {
     });
   }
 
-  /// Tag name on its color, full width in the dialog and compact in the field.
-  Widget _tagLabel(Tag tag, {bool expand = false}) =>
-      TagLabel(tag.name, Color(tag.color), expand: expand);
-
   @override
   Widget build(BuildContext context) {
     // Same colors as MoneyText.
     final color = expense ? Colors.red.shade400 : Colors.green.shade600;
-    final total = _amountTotal();
     final editing = widget.statement != null;
     // Back, the close button and Cancel all ask before dropping changes.
     return PopScope(
@@ -353,11 +232,11 @@ class _AddWidgetState extends State<AddWidget> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _closeEdit();
       },
-      child: _form(context, color, total, editing),
+      child: _form(context, color, editing),
     );
   }
 
-  Widget _form(BuildContext context, Color color, String? total, bool editing) {
+  Widget _form(BuildContext context, Color color, bool editing) {
     return Scaffold(
       appBar: editing ? AppBar(title: const Text('Edit statement')) : null,
       // Pinned above the keyboard and the tab bar.
@@ -431,67 +310,20 @@ class _AddWidgetState extends State<AddWidget> {
                       child: Text(expense ? 'Expense' : 'Income'),
                     ),
                   ),
-                  Column(
-                    children: [
-                      TextFormField(
-                        controller: amountController,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w600,
-                            ),
-                        decoration: InputDecoration(
-                          hintText: '0,00',
-                          filled: false,
-                          border: InputBorder.none,
-                          prefixIcon: Icon(Icons.euro_sharp, color: color),
-                        ),
-                        // signed: shows a minus key on the number keyboard.
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                          signed: true,
-                        ),
-                        onChanged: (_) => setState(() {}),
-                        validator: (value) {
-                          final amount = evaluateAmount(value ?? '');
-                          if (amount == null || amount <= 0) {
-                            return 'Please enter a positive amount';
-                          }
-                          return null;
-                        },
-                      ),
-                      if (total != null)
-                        Text(
-                          total,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.copyWith(color: color),
-                        ),
-                    ],
-                  ),
+                  AmountField(controller: amountController, color: color),
                   Card(
                     margin: EdgeInsets.zero,
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: Row(
                         children: [
-                          TextButton.icon(
-                            onPressed: _pickDate,
-                            icon: const Icon(Icons.calendar_today),
-                            label: Text(
-                              date.toIso8601String().substring(0, 10),
-                            ),
+                          DateButton(
+                            date,
+                            onChanged: (d) => setState(() => date = d),
                           ),
-                          TextButton.icon(
-                            onPressed: _pickTime,
-                            icon: const Icon(Icons.schedule),
-                            label: Text(
-                              MaterialLocalizations.of(context).formatTimeOfDay(
-                                TimeOfDay.fromDateTime(date),
-                                alwaysUse24HourFormat: true,
-                              ),
-                            ),
+                          TimeButton(
+                            date,
+                            onChanged: (d) => setState(() => date = d),
                           ),
                           const SizedBox(width: 8),
                           const Icon(Icons.account_balance_wallet_outlined),

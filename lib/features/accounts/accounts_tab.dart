@@ -3,11 +3,12 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
-import 'package:money_mind/database/models/account_type.dart';
 import 'package:money_mind/features/accounts/account_form.dart';
 import 'package:money_mind/features/accounts/transfer_form.dart';
+import 'package:money_mind/features/accounts/widgets/account_tile.dart';
+import 'package:money_mind/features/accounts/widgets/no_accounts_hint.dart';
+import 'package:money_mind/features/accounts/widgets/total_balance_card.dart';
 
 import 'package:money_mind/database/app_database.dart';
 
@@ -79,108 +80,6 @@ class _AccountState extends State<AccountWidget> {
     print("Inserted 36500 statements in ${stopwatch.elapsedMilliseconds} ms");
   }
 
-  Widget _totalCard(List<Account> accounts) {
-    final double total = accounts.fold(0, (sum, a) => sum + a.balance);
-    final colors = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Card(
-      color: colors.primaryContainer,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Total balance",
-              style: text.labelLarge?.copyWith(
-                color: colors.onPrimaryContainer,
-              ),
-            ),
-            const SizedBox(height: 4),
-            MoneyText(total, style: text.headlineMedium),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _list(List<Account> accounts) {
-    if (accounts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 12),
-            const Text("No accounts yet"),
-            const SizedBox(height: 4),
-            const Text("Tap \"Add account\" to create your first one."),
-          ],
-        ),
-      );
-    }
-    final colors = Theme.of(context).colorScheme;
-    return SlidableAutoCloseBehavior(
-      child: ListView.builder(
-        // Leave room so the last card isn't hidden behind the buttons.
-        padding: const EdgeInsets.only(bottom: 140),
-        itemCount: accounts.length + 1,
-        itemBuilder: ((context, index) {
-          if (index == 0) return _totalCard(accounts);
-          final Account account = accounts[index - 1];
-          return Card(
-            clipBehavior: Clip.antiAlias,
-            child: Slidable(
-              groupTag: "0",
-              endActionPane: account.closed
-                  ? null
-                  : ActionPane(
-                      motion: ScrollMotion(),
-                      extentRatio: 0.25,
-                      children: [
-                        SlidableAction(
-                          onPressed: (_) => _closeAccount(account),
-                          backgroundColor: colors.error,
-                          foregroundColor: colors.onError,
-                          icon: Icons.block,
-                          label: "Close",
-                        ),
-                      ],
-                    ),
-              child: ListTile(
-                enabled: !account.closed,
-                leading: CircleAvatar(
-                  backgroundColor: colors.secondaryContainer,
-                  foregroundColor: colors.onSecondaryContainer,
-                  child: Icon(
-                    account.type == AccountType.creditCard
-                        ? Icons.credit_card
-                        : Icons.account_balance_wallet_outlined,
-                  ),
-                ),
-                title: Text(account.name),
-                subtitle: Text(
-                  account.closed
-                      ? "${account.type.displayName} · Closed"
-                      : account.type.displayName,
-                ),
-                trailing: Opacity(
-                  opacity: account.closed ? 0.5 : 1,
-                  child: MoneyText(account.balance),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
   Widget _actions(List<Account> accounts) {
     final open = accounts.where((a) => !a.closed).toList();
     return Column(
@@ -230,9 +129,26 @@ class _AccountState extends State<AccountWidget> {
           // Show a placeholder while loading
           return Center(child: CircularProgressIndicator());
         }
+        final accounts = asyncSnapshot.data!;
         return Scaffold(
-          body: _list(asyncSnapshot.data!),
-          floatingActionButton: _actions(asyncSnapshot.data!),
+          body: accounts.isEmpty
+              ? const NoAccountsHint()
+              : SlidableAutoCloseBehavior(
+                  child: ListView(
+                    // Leave room so the last card isn't hidden behind the
+                    // buttons.
+                    padding: const EdgeInsets.only(bottom: 140),
+                    children: [
+                      TotalBalanceCard(accounts),
+                      for (final account in accounts)
+                        AccountTile(
+                          account,
+                          onClose: () => _closeAccount(account),
+                        ),
+                    ],
+                  ),
+                ),
+          floatingActionButton: _actions(accounts),
         );
       },
     );
