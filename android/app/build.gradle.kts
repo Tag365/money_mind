@@ -42,3 +42,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // The AppCompat themes in styles.xml, which local_auth's prompt needs.
+    implementation("androidx.appcompat:appcompat:1.7.0")
+}

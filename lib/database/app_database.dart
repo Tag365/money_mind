@@ -9,20 +9,22 @@ import 'package:money_mind/database/migrations/v3.dart';
 import 'package:money_mind/database/migrations/v4.dart';
 import 'package:money_mind/database/migrations/v5.dart';
 import 'package:money_mind/database/migrations/v6.dart';
+import 'package:money_mind/database/migrations/v7.dart';
 
 import 'models/accounts.dart';
 import 'models/statements.dart';
+import 'models/settings.dart';
 import 'models/tags.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Statements, Accounts, Tags, Recurrences])
+@DriftDatabase(tables: [Statements, Accounts, Tags, Recurrences, Settings])
 class AppDatabase extends _$AppDatabase {
   // Tests pass NativeDatabase.memory().
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,6 +39,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4) await migrateToV4(this, m);
       if (from < 5) await migrateToV5(this, m);
       if (from < 6) await migrateToV6(this, m);
+      if (from < 7) await migrateToV7(this, m);
     },
   );
 

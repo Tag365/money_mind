@@ -104,6 +104,22 @@ class DatabaseService {
     )..where((tbl) => tbl.id.equals(id))).getSingle();
   }
 
+  /// The value stored under [key], or null while none is.
+  Stream<String?> watchSetting(String key) {
+    return (database.select(database.settings)
+          ..where((tbl) => tbl.key.equals(key)))
+        .map((row) => row.value)
+        .watchSingleOrNull();
+  }
+
+  Future<void> setSetting(String key, String value) async {
+    await database
+        .into(database.settings)
+        .insertOnConflictUpdate(
+          SettingsCompanion.insert(key: key, value: value),
+        );
+  }
+
   Stream<List<Tag>> watchTags() {
     return (database.select(
       database.tags,

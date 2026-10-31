@@ -1,0 +1,128 @@
+import 'package:flutter/material.dart';
+import 'package:money_mind/app/app_lock.dart';
+import 'package:money_mind/common/glass_background.dart';
+import 'package:money_mind/features/settings/app_settings.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+/// Theme, app lock and about; opened from the gear on the Home tab.
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  late final Stream<ThemeMode> _themeMode = watchThemeMode();
+  late final Stream<bool> _appLock = watchAppLock();
+  late final Future<PackageInfo> _info = PackageInfo.fromPlatform();
+
+  Future<void> _setAppLock(bool on) async {
+    if (on) {
+      // Unlocking once first shows the device can, so the lock can't shut the
+      // user out.
+      final ok = await authenticateUser();
+      if (ok == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Set up a screen lock on this device first.'),
+          ),
+        );
+      }
+      if (ok != true) return;
+    }
+    await setAppLock(on);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassBackground(
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Settings')),
+        body: ListView(
+          padding: const EdgeInsets.only(bottom: 16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Theme',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    StreamBuilder(
+                      stream: _themeMode,
+                      builder: (context, snapshot) => SegmentedButton(
+                        showSelectedIcon: false,
+                        segments: const [
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            icon: Icon(Icons.brightness_auto_outlined),
+                            label: Text('System'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            icon: Icon(Icons.light_mode_outlined),
+                            label: Text('Light'),
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            icon: Icon(Icons.dark_mode_outlined),
+                            label: Text('Dark'),
+                          ),
+                        ],
+                        selected: {snapshot.data ?? ThemeMode.system},
+                        onSelectionChanged: (modes) =>
+                            setThemeMode(modes.single),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: StreamBuilder(
+                stream: _appLock,
+                builder: (context, snapshot) => SwitchListTile(
+                  secondary: const Icon(Icons.lock_outline),
+                  title: const Text('App lock'),
+                  subtitle: const Text(
+                    'Ask for fingerprint or screen lock when opening the app',
+                  ),
+                  value: snapshot.data ?? false,
+                  onChanged: snapshot.hasData ? _setAppLock : null,
+                ),
+              ),
+            ),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: FutureBuilder(
+                future: _info,
+                builder: (context, snapshot) {
+                  final info = snapshot.data;
+                  final version = info == null
+                      ? null
+                      : '${info.version} (${info.buildNumber})';
+                  return ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('About Money Mind'),
+                    subtitle: version == null ? null : Text('Version $version'),
+                    onTap: () => showAboutDialog(
+                      context: context,
+                      applicationName: 'Money Mind',
+                      applicationVersion: version,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

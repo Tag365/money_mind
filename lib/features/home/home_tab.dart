@@ -5,6 +5,7 @@ import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/home/widgets/total_balance_card.dart';
 import 'package:money_mind/features/home/widgets/month_summary_card.dart';
 import 'package:money_mind/features/home/widgets/upcoming_card.dart';
+import 'package:money_mind/features/settings/settings_page.dart';
 
 /// Overview at a glance: total balance, this month so far and what is due
 /// next. Tapping the total or the month calls [onOpenTab] with the index of
@@ -34,7 +35,18 @@ class _HomeState extends State<HomeWidget> {
   Widget build(BuildContext context) {
     return GlassBackground(
       child: Scaffold(
-        appBar: AppBar(title: const Text("Home")),
+        appBar: AppBar(
+          title: const Text("Home"),
+          actions: [
+            IconButton(
+              tooltip: "Settings",
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+            ),
+          ],
+        ),
         body: _body(),
       ),
     );
