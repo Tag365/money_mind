@@ -38,6 +38,7 @@ class _AccountFormState extends State<AccountForm> {
       ["Auto-generated"],
       "This statement was auto-generated when the account was created.",
     );
+    if (!mounted) return;
     Navigator.pop(context, accountId);
   }
 
