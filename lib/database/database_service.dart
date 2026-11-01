@@ -39,6 +39,10 @@ typedef StatementWithBalance = ({Statement statement, double? balance});
 /// of.
 typedef UpcomingPayment = ({Statement statement, DateTime date});
 
+/// Sum of the positive and of the negative amounts of statements with the
+/// same [tags].
+typedef TagTotal = ({List<String> tags, double income, double expense});
+
 class DatabaseService {
   // Singleton pattern
   DatabaseService._internal();
@@ -691,6 +695,33 @@ class DatabaseService {
       (rows) => [
         for (final row in rows)
           (statement: row.readTable(tbl), balance: row.read(balance)),
+      ],
+    );
+  }
+
+  /// Totals per distinct tag list of the statements with a payment date in
+  /// [start, end), transfers left out. Grouped by SQLite, so a month yields a
+  /// handful of rows however many statements it has.
+  Stream<List<TagTotal>> watchTagTotals(DateTime start, DateTime end) {
+    final tbl = database.statements;
+    final income = tbl.amount.total(filter: tbl.amount.isBiggerOrEqualValue(0));
+    final expense = tbl.amount.total(filter: tbl.amount.isSmallerThanValue(0));
+    final query = database.selectOnly(tbl)
+      ..addColumns([tbl.tags, income, expense])
+      ..where(
+        tbl.paymentDate.isBiggerOrEqualValue(start) &
+            tbl.paymentDate.isSmallerThanValue(end) &
+            tbl.transfer.isNull(),
+      )
+      ..groupBy([tbl.tags]);
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          (
+            tags: row.readWithConverter<List<String>, String>(tbl.tags)!,
+            income: row.read(income)!,
+            expense: row.read(expense)!,
+          ),
       ],
     );
   }

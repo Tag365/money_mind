@@ -3,13 +3,13 @@ import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/home/widgets/total_balance_card.dart';
-import 'package:money_mind/features/home/widgets/month_summary_card.dart';
+import 'package:money_mind/features/home/widgets/month_overview.dart';
 import 'package:money_mind/features/home/widgets/upcoming_card.dart';
 import 'package:money_mind/features/settings/settings_page.dart';
 
-/// Overview at a glance: total balance, this month so far and what is due
-/// next. Tapping the total or the month calls [onOpenTab] with the index of
-/// the Accounts or Statements tab.
+/// Overview at a glance: total balance, a month by tag and what is due next.
+/// Tapping the total or the net calls [onOpenTab] with the index of the
+/// Accounts or Statements tab.
 class HomeWidget extends StatefulWidget {
   final ValueChanged<int> onOpenTab;
 
@@ -24,10 +24,6 @@ class _HomeState extends State<HomeWidget> {
 
   // Created once so rebuilds don't re-run the queries.
   late final Stream<List<Account>> _accounts = databaseService.watchAccounts();
-  late final Stream<List<PeriodTotal>> _totals = databaseService.watchTotals(
-    yearly: false,
-    transfers: false,
-  );
   late final Stream<List<UpcomingPayment>> _upcoming = databaseService
       .watchUpcoming();
 
@@ -68,21 +64,7 @@ class _HomeState extends State<HomeWidget> {
           padding: const EdgeInsets.only(bottom: 16),
           children: [
             TotalBalanceCard(accounts, onTap: () => widget.onOpenTab(3)),
-            StreamBuilder(
-              stream: _totals,
-              builder: (context, snapshot) {
-                final now = DateTime.now();
-                // Totals may also hold later months with statements created
-                // ahead, so look the current one up.
-                final month = snapshot.data
-                    ?.where((p) => p.start == DateTime(now.year, now.month))
-                    .firstOrNull;
-                return MonthSummaryCard(
-                  month,
-                  onTap: () => widget.onOpenTab(2),
-                );
-              },
-            ),
+            MonthOverview(onOpenStatements: () => widget.onOpenTab(2)),
             StreamBuilder(
               stream: _upcoming,
               builder: (context, snapshot) =>
