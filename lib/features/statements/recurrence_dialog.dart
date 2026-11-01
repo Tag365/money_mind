@@ -16,8 +16,7 @@ String describeInterval(RecurrenceUnit unit, int every) {
 class RecurrenceDialog extends StatefulWidget {
   final DateTime from;
   final Recurrence? recurrence;
-  final Future<void> Function(RecurrenceUnit unit, int every, bool ahead)
-  onSave;
+  final Future<void> Function(RecurrenceUnit unit, int every) onSave;
   final Future<void> Function() onTurnOff;
 
   const RecurrenceDialog({
@@ -34,7 +33,6 @@ class RecurrenceDialog extends StatefulWidget {
 
 class _RecurrenceDialogState extends State<RecurrenceDialog> {
   late RecurrenceUnit _unit = widget.recurrence?.unit ?? RecurrenceUnit.month;
-  late bool _ahead = widget.recurrence?.ahead ?? false;
   late final _every = TextEditingController(
     text: '${widget.recurrence?.every ?? 1}',
   );
@@ -61,7 +59,7 @@ class _RecurrenceDialogState extends State<RecurrenceDialog> {
   Future<void> _save() async {
     final navigator = Navigator.of(context);
     setState(() => _saving = true);
-    await widget.onSave(_unit, _parsedEvery!, _ahead);
+    await widget.onSave(_unit, _parsedEvery!);
     navigator.pop();
   }
 
@@ -124,13 +122,7 @@ class _RecurrenceDialogState extends State<RecurrenceDialog> {
               'Next statement is due '
               '${_next(every).toIso8601String().substring(0, 10)}',
             ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: _ahead,
-            onChanged: (value) => setState(() => _ahead = value!),
-            title: const Text('Add the next statement up to a month ahead'),
-          ),
+          const Text('It is added up to a month ahead.'),
         ],
       ),
       actions: [

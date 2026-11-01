@@ -27,12 +27,14 @@ void main() {
     final gym = (await db.select(db.statements).get()).firstWhere(
       (s) => s.title == 'Gym',
     );
-    // Not created ahead, so its next occurrence only exists as a projection.
+    // Its next occurrence is within a month, so it is created ahead.
     await service.setRecurrence(gym, RecurrenceUnit.month, 1);
 
     final upcoming = await service.watchUpcoming().first;
     expect(upcoming.map((u) => u.statement.title), ['Insurance', 'Gym']);
     expect(upcoming.last.date, RecurrenceUnit.month.occurrence(lastWeek, 1, 1));
+    // A real statement, not the template projected forward.
+    expect(upcoming.last.statement.paymentDate, upcoming.last.date);
     await db.close();
   });
 }

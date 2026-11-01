@@ -461,9 +461,8 @@ class DatabaseService {
   Future<void> setRecurrence(
     Statement statement,
     RecurrenceUnit unit,
-    int every, {
-    bool ahead = false,
-  }) async {
+    int every,
+  ) async {
     assert(every > 0);
     await database.transaction(() async {
       final id = statement.recurrence;
@@ -472,13 +471,10 @@ class DatabaseService {
           : await (database.select(
               database.recurrences,
             )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
-      if (existing != null &&
-          existing.unit == unit &&
-          existing.every == every) {
-        await (database.update(database.recurrences)
-              ..where((tbl) => tbl.id.equals(existing.id)))
-            .write(RecurrencesCompanion(ahead: Value(ahead)));
-      } else {
+      // An unchanged interval keeps its schedule.
+      if (existing == null ||
+          existing.unit != unit ||
+          existing.every != every) {
         // A new interval counts from the newest statement of the series.
         final anchor = await latestInSeries(statement);
         final recurrence = RecurrencesCompanion(
@@ -486,7 +482,6 @@ class DatabaseService {
           unit: Value(unit),
           every: Value(every),
           generated: const Value(1),
-          ahead: Value(ahead),
         );
         if (existing != null) {
           await (database.update(
@@ -518,8 +513,9 @@ class DatabaseService {
   }
 
   /// Creates every occurrence due by [at] (default: now), copying the newest
-  /// statement of each series. Series whose account is closed or gone stop. Series with `ahead` also get the next
-  /// occurrence within a month, but never more than one upcoming statement.
+  /// statement of each series, and the next occurrence within a month, but
+  /// never more than one upcoming statement per series. Series whose account
+  /// is closed or gone stop.
   /// Safe to call any number of times: each occurrence is created once.
   Future<void> addDueRecurrences({DateTime? at}) async {
     final now = at ?? DateTime.now();
@@ -556,7 +552,7 @@ class DatabaseService {
         for (
           var date = r.unit.occurrence(r.start, r.every, n);
           !date.isAfter(now) ||
-              (r.ahead && !latest.isAfter(now) && !date.isAfter(monthAhead));
+              (!latest.isAfter(now) && !date.isAfter(monthAhead));
           date = r.unit.occurrence(r.start, r.every, ++n)
         ) {
           latest = date;

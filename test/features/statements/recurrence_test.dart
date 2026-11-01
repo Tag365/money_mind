@@ -75,7 +75,7 @@ void main() {
     await service.addStatement('Rent', -800, bank, paid, paid, [], '');
     final rent = (await db.select(db.statements).get()).single;
     // Past occurrences plus one created a month ahead.
-    await service.setRecurrence(rent, RecurrenceUnit.month, 1, ahead: true);
+    await service.setRecurrence(rent, RecurrenceUnit.month, 1);
     final before = await db.select(db.statements).get();
     final pastCount = before.where((s) => !s.paymentDate.isAfter(now)).length;
     final futureCount = before.length - pastCount;
@@ -164,7 +164,7 @@ void main() {
     await db.close();
   });
 
-  test('ahead creates only one upcoming statement', () async {
+  test('creates only one upcoming statement', () async {
     final db = AppDatabase(NativeDatabase.memory());
     final service = DatabaseService.instance..database = db;
     final bank = await service.addAccount('Bank', AccountType.debit);
@@ -173,7 +173,7 @@ void main() {
     await service.addStatement('Lunch', -10, bank, paid, paid, [], '');
     final lunch = (await db.select(db.statements).get()).single;
 
-    await service.setRecurrence(lunch, RecurrenceUnit.week, 1, ahead: true);
+    await service.setRecurrence(lunch, RecurrenceUnit.week, 1);
     await service.addDueRecurrences();
 
     final all = await db.select(db.statements).get();
