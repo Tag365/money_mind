@@ -2,6 +2,44 @@ import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/analysis/tag_breakdown.dart';
 
+const _monthNames = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// "Jan" for 1, like the rest of the app's English labels.
+String monthAbbreviation(int month) => _monthNames[month - 1];
+
+typedef MonthBalance = ({DateTime month, double balance});
+
+/// The balance at the end of each of the up to [count] months up to [last],
+/// oldest first, starting no earlier than the first month in the monthly
+/// [totals]. Balances are the sum of all statements, so this is a running
+/// sum of the monthly totals.
+List<MonthBalance> monthEndBalances(
+  List<PeriodTotal> totals,
+  DateTime last,
+  int count,
+) {
+  if (totals.isEmpty) return const [];
+  final byStart = {for (final p in totals) p.start: p.total};
+  final first = byStart.keys.reduce((a, b) => a.isBefore(b) ? a : b);
+  var start = DateTime(last.year, last.month - count + 1);
+  if (first.isAfter(start)) start = first;
+  var balance = 0.0;
+  for (final p in totals) {
+    if (p.start.isBefore(start)) balance += p.total;
+  }
+  return [
+    for (
+      var month = start;
+      !month.isAfter(last);
+      month = DateTime(month.year, month.month + 1)
+    )
+      (month: month, balance: balance += byStart[month] ?? 0),
+  ];
+}
+
 /// The [count] months up to and including [last], oldest first, from the
 /// monthly [totals]; months without statements are zero.
 List<PeriodTotal> monthSeries(

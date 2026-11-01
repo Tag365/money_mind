@@ -2,11 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:money_mind/common/money_text.dart';
 import 'package:money_mind/database/database_service.dart';
-
-const _monthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+import 'package:money_mind/features/analysis/trend.dart';
 
 /// One bar per month of [months]: with [income] and [expense] both, income
 /// up and expenses down; with one of them, its amounts up. Tapping a bar
@@ -70,7 +66,7 @@ class MonthBarChart extends StatelessWidget {
                 getTitlesWidget: (value, meta) => SideTitleWidget(
                   meta: meta,
                   child: Text(
-                    _monthNames[months[value.toInt()].month! - 1],
+                    monthAbbreviation(months[value.toInt()].month!),
                     style: theme.textTheme.labelSmall,
                   ),
                 ),
