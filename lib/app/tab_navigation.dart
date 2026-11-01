@@ -14,6 +14,7 @@ class TabNavigation extends StatefulWidget {
 
 class _TabNavigationState extends State<TabNavigation> {
   int _index = 0;
+  final _pages = PageController();
 
   // Recurring statements fall due while the app is closed or in background.
   late final AppLifecycleListener _lifecycle;
@@ -30,10 +31,17 @@ class _TabNavigationState extends State<TabNavigation> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _pages.dispose();
     super.dispose();
   }
 
-  void _select(int index) {
+  void _select(int index) => _pages.animateToPage(
+    index,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
+
+  void _onPageChanged(int index) {
     // A field focused in the tab left behind would keep the keyboard open.
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _index = index);
@@ -43,14 +51,16 @@ class _TabNavigationState extends State<TabNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       // Each tab has its own app bar, with that tab's secondary actions.
-      // IndexedStack keeps each tab (and its scroll position) alive.
-      body: IndexedStack(
-        index: _index,
+      // Swipe between tabs; _KeepAlive keeps each one (and its scroll
+      // position) alive while off screen.
+      body: PageView(
+        controller: _pages,
+        onPageChanged: _onPageChanged,
         children: [
-          HomeWidget(onOpenTab: _select),
-          AddWidget(active: _index == 1),
-          const ListWidget(),
-          const AccountWidget(),
+          _KeepAlive(HomeWidget(onOpenTab: _select)),
+          _KeepAlive(AddWidget(active: _index == 1)),
+          const _KeepAlive(ListWidget()),
+          const _KeepAlive(AccountWidget()),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -80,5 +90,26 @@ class _TabNavigationState extends State<TabNavigation> {
         ],
       ),
     );
+  }
+}
+
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive(this.child);
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
