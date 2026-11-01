@@ -33,8 +33,11 @@ void main() {
     expect(accounts['Amex'], closeTo(-1122.20, 0.001));
     expect(accounts['Trade Republic'], closeTo(3874.41, 0.001));
 
-    final tags = {for (final t in await db.select(db.tags).get()) t.name};
-    expect(tags, {
+    final colors = {
+      for (final t in await db.select(db.tags).get()) t.name: t.color,
+    };
+    expect(colors['Auto : Laden/Spritt'], colors['Auto']);
+    expect(colors.keys.toSet(), {
       'Amex',
       'Transfer',
       'monatliche Kosten',

@@ -141,24 +141,29 @@ Future<int> importMoneyWise(String csv) async {
       }
     }
 
-    final existingTags = {
+    final colors = {
       for (final t
           in await service.database.select(service.database.tags).get())
-        t.name,
+        t.name: t.color,
     };
+    String? parentOf(String tag) {
+      final i = tag.indexOf(DatabaseService.tagSeparator);
+      return i < 0 ? null : tag.substring(0, i);
+    }
+
     // A sub-category's parent becomes a tag too, so the picker can nest it.
     final newTags = {
       for (final p in parsed)
-        for (final tag in p.statement.tags.value) ...[
-          tag,
-          if (tag.contains(DatabaseService.tagSeparator))
-            tag.substring(0, tag.indexOf(DatabaseService.tagSeparator)),
-        ],
-    }.difference(existingTags);
+        for (final tag in p.statement.tags.value) ...[tag, ?parentOf(tag)],
+    }.difference(colors.keys.toSet());
+    // New tags get a random palette colour; children take their parent's.
     final random = Random();
+    int colorOf(String tag) => colors[tag] ??= switch (parentOf(tag)) {
+      final parent? => colorOf(parent),
+      null => tagColors[random.nextInt(tagColors.length)].toARGB32(),
+    };
     for (final tag in newTags) {
-      final color = tagColors[random.nextInt(tagColors.length)];
-      await service.addTag(tag, color.toARGB32());
+      await service.addTag(tag, colorOf(tag));
     }
 
     // Oldest first, so ids keep the order of statements on the same day.
