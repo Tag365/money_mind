@@ -35,6 +35,10 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
   - Monthly/yearly totals (`watchTotals`) are aggregated in SQLite and grouped by local time, not UTC.
 - **Statements list** is an accordion of months (`watchTotals`); an expanded month loads its statements via `watchStatementsBetween` and shows them grouped by day (`groupByDay`).
 
+## Pull requests
+
+Every PR bumps `version` in `pubspec.yaml` (`name+build`, the single source for Android's `versionName`/`versionCode` and the About screen): build number +1 always; minor for features, patch for fixes, e.g. `1.0.0+1` → `1.1.0+2`. Do it in the PR's own branch, in a commit before pushing.
+
 ## CI
 
 `.github/workflows/checks.yml` runs on PRs only: `dart format --set-exit-if-changed lib test` and `flutter analyze --no-fatal-infos`.
