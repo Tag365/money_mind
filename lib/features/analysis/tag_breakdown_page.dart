@@ -6,6 +6,7 @@ import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/analysis/tag_breakdown.dart';
 import 'package:money_mind/features/analysis/trend.dart';
+import 'package:money_mind/features/analysis/widgets/tag_trend.dart';
 import 'package:money_mind/features/statements/statement_filter.dart';
 import 'package:money_mind/features/statements/statement_list.dart';
 
@@ -58,17 +59,19 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
         parent: tag,
       );
     } else {
+      final filter = StatementFilter(
+        tags: {tag},
+        // The parent's own row is without its children, listed beside it.
+        childTags: tag != widget.parent,
+        transfers: false,
+        income: widget.income,
+        expense: !widget.income,
+      );
       page = ListWidget(
         title: tag == untagged ? "No tag" : tag,
         month: widget.month,
-        filter: StatementFilter(
-          tags: {tag},
-          // The parent's own row is without its children, listed beside it.
-          childTags: tag != widget.parent,
-          transfers: false,
-          income: widget.income,
-          expense: !widget.income,
-        ),
+        filter: filter,
+        header: TagTrend(filter: filter, month: widget.month),
       );
     }
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -167,6 +170,17 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
                   ],
                 ),
               ),
+              // The whole family over time.
+              if (widget.parent case final parent?)
+                TagTrend(
+                  filter: StatementFilter(
+                    tags: {parent},
+                    transfers: false,
+                    income: widget.income,
+                    expense: !widget.income,
+                  ),
+                  month: widget.month,
+                ),
               if (shares.isEmpty)
                 const Center(child: Text("Nothing this month.")),
               for (final (i, s) in shares.indexed)

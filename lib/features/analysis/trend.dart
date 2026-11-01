@@ -36,6 +36,29 @@ int monthsWithHistory(List<PeriodTotal> totals, DateTime start, DateTime end) {
   return months < 0 ? 0 : months;
 }
 
+/// The average per month of [side] over the full months of [months] (a
+/// [monthSeries]) since the data in [all] starts, or null when there is none.
+/// The month of [now] is still running, so it does not count.
+double? monthlyAverage(
+  List<PeriodTotal> months,
+  List<PeriodTotal> all,
+  double Function(PeriodTotal) side, {
+  DateTime? now,
+}) {
+  now ??= DateTime.now();
+  final last = months.last.start;
+  final next = DateTime(last.year, last.month + 1);
+  final current = DateTime(now.year, now.month);
+  final end = next.isAfter(current) ? current : next;
+  final count = monthsWithHistory(all, months.first.start, end);
+  if (count == 0) return null;
+  final from = DateTime(end.year, end.month - count);
+  return months
+          .where((p) => !p.start.isBefore(from) && p.start.isBefore(end))
+          .fold(0.0, (s, p) => s + side(p)) /
+      count;
+}
+
 /// The monthly average per tag of [history], which spans [months] months,
 /// grouped as [tagBreakdown] does; empty without history.
 Map<String, double> tagAverages(
