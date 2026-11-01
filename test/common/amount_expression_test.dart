@@ -6,6 +6,9 @@ void main() {
     expect(evaluateAmount('12'), 12);
     expect(evaluateAmount('12,50'), 12.5);
     expect(evaluateAmount('12.50'), 12.5);
+    expect(evaluateAmount(',21'), 0.21);
+    expect(evaluateAmount('-,5'), -0.5);
+    expect(evaluateAmount('1+,5'), 1.5);
   });
 
   test('sums and differences', () {
@@ -20,5 +23,6 @@ void main() {
     expect(evaluateAmount('1++2'), isNull);
     expect(evaluateAmount('abc'), isNull);
     expect(evaluateAmount('1,2,3'), isNull);
+    expect(evaluateAmount(','), isNull);
   });
 }
