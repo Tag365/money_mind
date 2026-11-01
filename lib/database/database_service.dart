@@ -132,13 +132,25 @@ class DatabaseService {
         .insert(TagsCompanion(name: Value(name), color: Value(color)));
   }
 
-  /// Renaming also renames the tag on every statement that uses it.
+  /// Renaming also renames the tag on every statement that uses it, and
+  /// renames its children ("Old : Child" becomes "New : Child") the same way.
   Future<void> updateTag(Tag tag, String name, int color) async {
     await database.transaction(() async {
       await (database.update(database.tags)
             ..where((tbl) => tbl.id.equals(tag.id)))
           .write(TagsCompanion(name: Value(name), color: Value(color)));
-      if (name != tag.name) await _replaceTagInStatements(tag.name, name);
+      if (name == tag.name) return;
+      await _replaceTagInStatements(tag.name, name);
+      final prefix = tag.name + tagSeparator;
+      for (final child in await database.select(database.tags).get()) {
+        if (!child.name.startsWith(prefix)) continue;
+        final childName =
+            name + tagSeparator + child.name.substring(prefix.length);
+        await (database.update(database.tags)
+              ..where((tbl) => tbl.id.equals(child.id)))
+            .write(TagsCompanion(name: Value(childName)));
+        await _replaceTagInStatements(child.name, childName);
+      }
     });
   }
 
