@@ -25,12 +25,13 @@ class AccountWidget extends StatefulWidget {
 class _AccountState extends State<AccountWidget> {
   DatabaseService databaseService = DatabaseService.instance;
 
-  void _openAddAccountModal() {
+  /// Adds an account, or edits [account] when given.
+  void _openAccountForm([Account? account]) {
     showModalBottomSheet(
       isScrollControlled: true,
       showDragHandle: true,
       context: context,
-      builder: (BuildContext context) => const AccountForm(),
+      builder: (BuildContext context) => AccountForm(account: account),
     );
   }
 
@@ -104,7 +105,7 @@ class _AccountState extends State<AccountWidget> {
         ),
       IconButton(
         tooltip: "Add account",
-        onPressed: _openAddAccountModal,
+        onPressed: _openAccountForm,
         icon: const Icon(Icons.add),
       ),
     ];
@@ -119,7 +120,7 @@ class _AccountState extends State<AccountWidget> {
       return Center(child: CircularProgressIndicator());
     }
     final accounts = asyncSnapshot.data!;
-    if (accounts.isEmpty) return NoAccountsHint(onAdd: _openAddAccountModal);
+    if (accounts.isEmpty) return NoAccountsHint(onAdd: _openAccountForm);
     return SlidableAutoCloseBehavior(
       child: ListView(
         children: [
@@ -127,6 +128,7 @@ class _AccountState extends State<AccountWidget> {
           for (final account in accounts)
             AccountTile(
               account,
+              onEdit: () => _openAccountForm(account),
               onClose: () => _closeAccount(account),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(

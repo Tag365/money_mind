@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 
 import 'package:money_mind/common/amount_expression.dart';
+import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/account_type.dart';
 
+/// Adds an account, or renames [account] and changes its type when given.
+/// Its balance only changes through statements, so editing has no balance
+/// field.
 class AccountForm extends StatefulWidget {
-  const AccountForm({super.key});
+  final Account? account;
+
+  const AccountForm({super.key, this.account});
 
   @override
   State<AccountForm> createState() => _AccountFormState();
@@ -13,18 +19,31 @@ class AccountForm extends StatefulWidget {
 
 class _AccountFormState extends State<AccountForm> {
   final _formKey = GlobalKey<FormState>();
-  final accountNameController = TextEditingController();
+  late final accountNameController = TextEditingController(
+    text: widget.account?.name,
+  );
   final balanceController = TextEditingController();
   DatabaseService databaseService = DatabaseService.instance;
-  AccountType? accountType = AccountType.debit;
+  late AccountType? accountType = widget.account?.type ?? AccountType.debit;
   // Set for good: the sheet closes after saving.
   bool _saving = false;
 
-  void _addAccount() async {
+  bool get _editing => widget.account != null;
+
+  void _save() async {
     if (_saving || !_formKey.currentState!.validate()) {
       return;
     }
     setState(() => _saving = true);
+    if (widget.account case final account?) {
+      await databaseService.updateAccount(
+        account,
+        accountNameController.text,
+        accountType!,
+      );
+      if (mounted) Navigator.pop(context, account.id);
+      return;
+    }
     final double initialBalance = evaluateAmount(balanceController.text)!;
     int accountId = await databaseService.addAccount(
       accountNameController.text,
@@ -71,7 +90,7 @@ class _AccountFormState extends State<AccountForm> {
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Text(
-                      'Add account',
+                      _editing ? 'Edit account' : 'Add account',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     SizedBox(height: 20),
@@ -93,35 +112,37 @@ class _AccountFormState extends State<AccountForm> {
                               return null;
                             },
                           ),
-                          TextFormField(
-                            controller: balanceController,
-                            decoration: InputDecoration(
-                              labelText: "Initial balance",
-                              helperText:
-                                  "Negative if you owe it, e.g. a credit card",
-                              prefixIcon: Icon(Icons.euro_sharp),
+                          if (!_editing)
+                            TextFormField(
+                              controller: balanceController,
+                              decoration: InputDecoration(
+                                labelText: "Initial balance",
+                                helperText:
+                                    "Negative if you owe it, e.g. a credit card",
+                                prefixIcon: Icon(Icons.euro_sharp),
+                              ),
+                              // signed: shows a minus key on the number keyboard.
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter an initial balance';
+                                }
+                                if (evaluateAmount(value) == null) {
+                                  return 'Please enter a valid number';
+                                }
+                                return null;
+                              },
                             ),
-                            // signed: shows a minus key on the number keyboard.
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                              signed: true,
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter an initial balance';
-                              }
-                              if (evaluateAmount(value) == null) {
-                                return 'Please enter a valid number';
-                              }
-                              return null;
-                            },
-                          ),
                           SizedBox(
                             width: double.infinity,
                             child: DropdownMenu(
                               expandedInsets: EdgeInsets.zero,
                               label: Text('Account type'),
-                              initialSelection: AccountType.debit,
+                              initialSelection: accountType,
                               dropdownMenuEntries: AccountType.entries,
                               onSelected: (AccountType? type) {
                                 setState(() {
@@ -136,8 +157,8 @@ class _AccountFormState extends State<AccountForm> {
                               style: FilledButton.styleFrom(
                                 minimumSize: Size.fromHeight(52),
                               ),
-                              onPressed: _saving ? null : _addAccount,
-                              child: Text('Add account'),
+                              onPressed: _saving ? null : _save,
+                              child: Text(_editing ? 'Save' : 'Add account'),
                             ),
                           ),
                         ],
