@@ -7,6 +7,7 @@ void main() {
   final tags = [
     Tag(id: BigInt.one, name: 'Food', color: 0xFFFF9800),
     Tag(id: BigInt.two, name: 'Travel', color: 0xFF2962FF),
+    Tag(id: BigInt.from(3), name: 'Food : Bakery', color: 0xFF9E9E9E),
   ];
 
   /// Opens the dialog with Food selected and returns a getter for what it
@@ -41,6 +42,17 @@ void main() {
     await tap(tester, 'Travel');
     await tap(tester, 'OK');
     expect(result(), {'Food', 'Travel'});
+  });
+
+  testWidgets('children are folded under their parent', (tester) async {
+    final result = await open(tester);
+    expect(find.text('Bakery'), findsNothing);
+    expect(find.text('Food : Bakery'), findsNothing);
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+    await tap(tester, 'Bakery');
+    await tap(tester, 'OK');
+    expect(result(), {'Food', 'Food : Bakery'});
   });
 
   testWidgets('Clear unchecks everything', (tester) async {

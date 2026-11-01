@@ -60,6 +60,23 @@ void main() {
     ]);
   });
 
+  test('a parent tag matches its children', () async {
+    final date = DateTime(2026, 9, 20);
+    await service.addStatement('Bakery', -2, cash, date, date, [
+      'Einkauf : Bäcker',
+    ], '');
+    await service.addStatement('Toll', -9, cash, date, date, [
+      'Einkaufen : Maut',
+    ], '');
+    expect(await titles(const StatementFilter(tags: {'Einkauf'})), [
+      'Bakery',
+      'Breakfast',
+    ]);
+    expect(await titles(const StatementFilter(tags: {'Einkauf : Bäcker'})), [
+      'Bakery',
+    ]);
+  });
+
   test('excluded tags', () async {
     expect(
       await titles(const StatementFilter(tags: {'Ein'}, excludeTags: true)),
