@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:money_mind/common/glass_background.dart';
+import 'package:money_mind/features/analysis/widgets/balance_chart.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/accounts/account_form.dart';
 import 'package:money_mind/features/accounts/transfer_form.dart';
@@ -122,6 +123,7 @@ class _AccountState extends State<AccountWidget> {
     return SlidableAutoCloseBehavior(
       child: ListView(
         children: [
+          const BalanceChart(),
           for (final account in accounts)
             AccountTile(
               account,
@@ -131,6 +133,7 @@ class _AccountState extends State<AccountWidget> {
                   builder: (_) => ListWidget(
                     title: account.name,
                     filter: StatementFilter(accounts: {account.id}),
+                    header: BalanceChart(accounts: {account.id}),
                   ),
                 ),
               ),
