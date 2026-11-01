@@ -1,7 +1,11 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:money_mind/app/app_lock.dart';
 import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/features/settings/app_settings.dart';
+import 'package:money_mind/features/settings/moneywise_import.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 /// Theme, app lock and about; opened from the gear on the Home tab.
@@ -32,6 +36,32 @@ class _SettingsPageState extends State<SettingsPage> {
       if (ok != true) return;
     }
     await setAppLock(on);
+  }
+
+  bool _importing = false;
+
+  Future<void> _import() async {
+    final files = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+    if (files.isEmpty) return;
+    setState(() => _importing = true);
+    String message;
+    try {
+      final count = await importMoneyWise(
+        utf8.decode(await files.single.readAsBytes()),
+      );
+      message = 'Imported $count statements.';
+    } on FormatException catch (e) {
+      message = 'Import failed: ${e.message}';
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -96,6 +126,24 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: snapshot.data ?? false,
                   onChanged: snapshot.hasData ? _setAppLock : null,
                 ),
+              ),
+            ),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: ListTile(
+                leading: const Icon(Icons.file_upload_outlined),
+                title: const Text('Import from MoneyWise'),
+                subtitle: const Text(
+                  'Statements, accounts and tags from a CSV export',
+                ),
+                enabled: !_importing,
+                trailing: _importing
+                    ? const SizedBox.square(
+                        dimension: 24,
+                        child: CircularProgressIndicator(),
+                      )
+                    : null,
+                onTap: _import,
               ),
             ),
             Card(
