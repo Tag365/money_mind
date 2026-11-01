@@ -135,6 +135,9 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
                     accounts: _accounts,
                     tags: _selectedTags,
                     excludeTags: _excludeTags,
+                    // Not in the sheet; kept from the page that opened it.
+                    childTags: widget.filter.childTags,
+                    transfers: widget.filter.transfers,
                     income: _income,
                     expense: _expense,
                     text: _text.text.trim(),

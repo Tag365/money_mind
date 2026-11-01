@@ -11,15 +11,18 @@ import 'package:money_mind/features/statements/widgets/active_filter_chips.dart'
 import 'package:money_mind/features/statements/widgets/period_tile.dart';
 
 /// The Statements tab. Pushed as its own page with a [title] and a [filter],
-/// e.g. to show one account's statements.
+/// e.g. to show one account's statements, and optionally only one [month],
+/// opened.
 class ListWidget extends StatefulWidget {
   final String title;
   final StatementFilter filter;
+  final DateTime? month;
 
   const ListWidget({
     super.key,
     this.title = 'Statements',
     this.filter = const StatementFilter(),
+    this.month,
   });
 
   @override
@@ -35,10 +38,14 @@ class _ListState extends State<ListWidget> {
 
   // Only replaced when the filter changes, so rebuilding the widget does not
   // run the query again.
-  late Stream<List<PeriodTotal>> _totals = databaseService.watchTotals(
-    yearly: false,
-    filter: _filter,
-  );
+  late Stream<List<PeriodTotal>> _totals = _watchTotals(_filter);
+
+  Stream<List<PeriodTotal>> _watchTotals(StatementFilter filter) {
+    final totals = databaseService.watchTotals(yearly: false, filter: filter);
+    final month = widget.month;
+    if (month == null) return totals;
+    return totals.map((t) => [...t.where((p) => p.start == month)]);
+  }
 
   Map<int, String> _accountNames = {};
   late final StreamSubscription<List<Account>> _accountsSubscription;
@@ -66,7 +73,7 @@ class _ListState extends State<ListWidget> {
   void _setFilter(StatementFilter filter) {
     setState(() {
       _filter = filter;
-      _totals = databaseService.watchTotals(yearly: false, filter: filter);
+      _totals = _watchTotals(filter);
     });
   }
 
@@ -152,6 +159,7 @@ class _ListState extends State<ListWidget> {
                         period: totals[index],
                         accountNames: _accountNames,
                         filter: _filter,
+                        open: widget.month != null,
                       ),
                     ),
                   ),
