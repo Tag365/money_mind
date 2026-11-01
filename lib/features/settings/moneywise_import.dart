@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:drift/drift.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/account_type.dart';
+import 'package:money_mind/features/tags/widgets/tag_color_picker.dart';
 
 /// Splits CSV [text] into rows of fields; quoted fields may hold commas,
 /// line breaks and doubled quotes.
@@ -152,8 +155,10 @@ Future<int> importMoneyWise(String csv) async {
             tag.substring(0, tag.indexOf(DatabaseService.tagSeparator)),
         ],
     }.difference(existingTags);
+    final random = Random();
     for (final tag in newTags) {
-      await service.addTag(tag, 0xFF9E9E9E);
+      final color = tagColors[random.nextInt(tagColors.length)];
+      await service.addTag(tag, color.toARGB32());
     }
 
     // Oldest first, so ids keep the order of statements on the same day.
