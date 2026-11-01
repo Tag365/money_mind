@@ -17,13 +17,19 @@ void main() {
   Future<void> show(
     WidgetTester tester,
     Account account,
-    VoidCallback onClose,
-  ) async {
+    VoidCallback onClose, {
+    VoidCallback? onEdit,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: SlidableAutoCloseBehavior(
-            child: AccountTile(account, onClose: onClose, onTap: () {}),
+            child: AccountTile(
+              account,
+              onEdit: onEdit ?? () {},
+              onClose: onClose,
+              onTap: () {},
+            ),
           ),
         ),
       ),
@@ -50,4 +56,21 @@ void main() {
     expect(find.text('Close'), findsNothing);
     expect(tester.widget<ListTile>(find.byType(ListTile)).enabled, isFalse);
   });
+
+  for (final closed in [false, true]) {
+    testWidgets('an account can be swiped to Edit (closed: $closed)', (
+      tester,
+    ) async {
+      var edited = 0;
+      await show(
+        tester,
+        account(closed: closed),
+        () {},
+        onEdit: () => edited++,
+      );
+
+      await tester.tap(find.text('Edit'));
+      expect(edited, 1);
+    });
+  }
 }

@@ -69,6 +69,16 @@ class DatabaseService {
         .insert(AccountsCompanion(name: Value(name), type: Value(type)));
   }
 
+  Future<void> updateAccount(
+    Account account,
+    String name,
+    AccountType type,
+  ) async {
+    await (database.update(database.accounts)
+          ..where((tbl) => tbl.id.equals(account.id)))
+        .write(AccountsCompanion(name: Value(name), type: Value(type)));
+  }
+
   /// Marks [account] closed: its statements and balance stay, but it takes no
   /// new statements, so the series that would add some stop.
   Future<void> closeAccount(Account account) async {

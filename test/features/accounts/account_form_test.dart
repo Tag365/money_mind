@@ -17,7 +17,7 @@ void main() {
   tearDown(() => db.close());
 
   /// Opens the form in a bottom sheet, like the Accounts tab does.
-  Future<void> openForm(WidgetTester tester) async {
+  Future<void> openForm(WidgetTester tester, [Account? account]) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
@@ -25,7 +25,7 @@ void main() {
             onPressed: () => showModalBottomSheet(
               isScrollControlled: true,
               context: context,
-              builder: (_) => const AccountForm(),
+              builder: (_) => AccountForm(account: account),
             ),
             child: const Text('open'),
           ),
@@ -99,6 +99,42 @@ void main() {
     expect(find.text('Please enter an initial balance'), findsOneWidget);
     final accounts = await tester.runAsync(() => db.select(db.accounts).get());
     expect(accounts, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('edits name and type, but not the balance', (tester) async {
+    final account = await tester.runAsync(() async {
+      final id = await DatabaseService.instance.addAccount(
+        'Giro',
+        AccountType.debit,
+      );
+      return DatabaseService.instance.getAccountById(id);
+    });
+    await openForm(tester, account);
+
+    expect(find.text('Edit account'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Initial balance'), findsNothing);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Account name'),
+      'Visa',
+    );
+    await tester.tap(find.byType(DropdownMenu<AccountType>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Credit card').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccountForm), findsNothing);
+    final edited = await tester.runAsync(
+      () => db.select(db.accounts).getSingle(),
+    );
+    expect(edited!.name, 'Visa');
+    expect(edited.type, AccountType.creditCard);
+    expect(
+      await tester.runAsync(() => db.select(db.statements).get()),
+      isEmpty,
+    );
     await tester.pumpWidget(const SizedBox());
   });
 }
