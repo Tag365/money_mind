@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:money_mind/app/app_lock.dart';
 import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/features/settings/app_settings.dart';
+import 'package:money_mind/features/settings/backup.dart';
 import 'package:money_mind/features/settings/moneywise_import.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -57,6 +58,64 @@ class _SettingsPageState extends State<SettingsPage> {
       message = 'Import failed: ${e.message}';
     } finally {
       if (mounted) setState(() => _importing = false);
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _backingUp = false;
+
+  Future<void> _backup() async {
+    setState(() => _backingUp = true);
+    try {
+      final day = DateTime.now().toIso8601String().substring(0, 10);
+      await FilePicker.saveFile(
+        fileName: 'money_mind_$day.sqlite',
+        bytes: await exportBackup(),
+      );
+    } finally {
+      if (mounted) setState(() => _backingUp = false);
+    }
+  }
+
+  Future<void> _restore() async {
+    final files = await FilePicker.pickFiles();
+    if (files.isEmpty || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore backup?'),
+        content: const Text(
+          'This replaces all accounts, statements, tags and settings with '
+          'those in the backup.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _backingUp = true);
+    String message;
+    try {
+      await restoreBackup(await files.single.readAsBytes());
+      message = 'Backup restored.';
+    } on FormatException catch (e) {
+      message = 'Restore failed: ${e.message}';
+    } catch (_) {
+      // e.g. an SQLite file of another app; the transaction rolled back.
+      message = 'Restore failed: not a Money Mind backup.';
+    } finally {
+      if (mounted) setState(() => _backingUp = false);
     }
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -126,6 +185,33 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: snapshot.data ?? false,
                   onChanged: snapshot.hasData ? _setAppLock : null,
                 ),
+              ),
+            ),
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.save_alt),
+                    title: const Text('Back up'),
+                    subtitle: const Text('Save all data to a file'),
+                    enabled: !_backingUp,
+                    onTap: _backup,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.restore),
+                    title: const Text('Restore'),
+                    subtitle: const Text('Replace all data with a backup'),
+                    enabled: !_backingUp,
+                    trailing: _backingUp
+                        ? const SizedBox.square(
+                            dimension: 24,
+                            child: CircularProgressIndicator(),
+                          )
+                        : null,
+                    onTap: _restore,
+                  ),
+                ],
               ),
             ),
             Card(
