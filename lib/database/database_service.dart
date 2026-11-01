@@ -39,6 +39,9 @@ typedef StatementWithBalance = ({Statement statement, double? balance});
 /// of.
 typedef UpcomingPayment = ({Statement statement, DateTime date});
 
+/// A series with its newest statement.
+typedef Contract = ({Statement statement, Recurrence recurrence});
+
 /// Sum of the positive and of the negative amounts of statements with the
 /// same [tags].
 typedef TagTotal = ({List<String> tags, double income, double expense});
@@ -582,24 +585,13 @@ class DatabaseService {
   /// so it uses the newest statement of the series as a template).
   Stream<List<UpcomingPayment>> watchUpcoming({int limit = 5}) {
     final tbl = database.statements;
-    final latest = database.alias(database.statements, 'latest');
     final recurrences = database.recurrences;
-    final latestOfSeries = subqueryExpression<int>(
-      database.selectOnly(latest)
-        ..addColumns([latest.id])
-        ..where(latest.recurrence.equalsExp(tbl.recurrence))
-        ..orderBy([
-          OrderingTerm.desc(latest.paymentDate),
-          OrderingTerm.desc(latest.id),
-        ])
-        ..limit(1),
-    );
     final query =
         database.select(tbl).join([
           leftOuterJoin(recurrences, recurrences.id.equalsExp(tbl.recurrence)),
         ])..where(
           tbl.paymentDate.isBiggerThan(currentDateAndTime) |
-              tbl.id.equalsExp(latestOfSeries),
+              tbl.id.equalsExp(_latestOfSeries()),
         );
     // Only rechecked when a table changes, not when a date passes.
     return query.watch().map((rows) {
@@ -617,6 +609,42 @@ class DatabaseService {
       upcoming.sort((a, b) => a.date.compareTo(b.date));
       return upcoming.take(limit).toList();
     });
+  }
+
+  /// Every series with its newest statement, which the next occurrence
+  /// copies.
+  Stream<List<Contract>> watchContracts() {
+    final tbl = database.statements;
+    final recurrences = database.recurrences;
+    final query = database.select(tbl).join([
+      innerJoin(recurrences, recurrences.id.equalsExp(tbl.recurrence)),
+    ])..where(tbl.id.equalsExp(_latestOfSeries()));
+    return query.watch().map(
+      (rows) => [
+        for (final row in rows)
+          (
+            statement: row.readTable(tbl),
+            recurrence: row.readTable(recurrences),
+          ),
+      ],
+    );
+  }
+
+  /// SQL id of the newest statement in the series of the current statements
+  /// row.
+  Expression<int> _latestOfSeries() {
+    final tbl = database.statements;
+    final latest = database.alias(database.statements, 'latest');
+    return subqueryExpression<int>(
+      database.selectOnly(latest)
+        ..addColumns([latest.id])
+        ..where(latest.recurrence.equalsExp(tbl.recurrence))
+        ..orderBy([
+          OrderingTerm.desc(latest.paymentDate),
+          OrderingTerm.desc(latest.id),
+        ])
+        ..limit(1),
+    );
   }
 
   /// SQL condition for statements that pass [filter].

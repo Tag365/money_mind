@@ -3,11 +3,13 @@ import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/home/widgets/total_balance_card.dart';
+import 'package:money_mind/features/home/widgets/contracts_overview.dart';
 import 'package:money_mind/features/home/widgets/month_overview.dart';
 import 'package:money_mind/features/home/widgets/upcoming_card.dart';
 import 'package:money_mind/features/settings/settings_page.dart';
 
-/// Overview at a glance: total balance, a month by tag and what is due next.
+/// Overview at a glance: total balance, a month by tag, what is due next and
+/// what recurring statements cost per month.
 /// Tapping the total or the net calls [onOpenTab] with the index of the
 /// Accounts or Statements tab.
 class HomeWidget extends StatefulWidget {
@@ -70,6 +72,7 @@ class _HomeState extends State<HomeWidget> {
               builder: (context, snapshot) =>
                   UpcomingCard(snapshot.data ?? const [], accountNames),
             ),
+            const ContractsOverview(),
           ],
         );
       },
