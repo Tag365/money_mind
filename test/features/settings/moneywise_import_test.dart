@@ -75,6 +75,15 @@ void main() {
     expect(await db.select(db.accounts).get(), isEmpty);
   });
 
+  test('accepts the balance column without currency', () async {
+    final csv = _csv.replaceFirst('Account balance (EUR)', 'Account balance');
+    expect(await importMoneyWise(csv), 6);
+    final c24 = (await db.select(db.accounts).get()).firstWhere(
+      (a) => a.name == 'C24 Bank',
+    );
+    expect(c24.balance, closeTo(3843.69, 0.001));
+  });
+
   test('rejects other CSV files', () async {
     await expectLater(importMoneyWise('a,b\n1,2\n'), throwsFormatException);
   });
