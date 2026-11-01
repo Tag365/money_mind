@@ -5,7 +5,8 @@ import 'package:money_mind/features/statements/statement_filter.dart';
 import 'package:money_mind/features/statements/widgets/period_statements.dart';
 
 /// One month of the statements list: its totals as a header that expands
-/// to the month's statements. The current month starts expanded.
+/// to the month's statements. The current month, or any with [open], starts
+/// expanded.
 ///
 /// Give it a `PageStorageKey` so it stays open when the totals stream emits
 /// again.
@@ -13,12 +14,14 @@ class PeriodTile extends StatelessWidget {
   final PeriodTotal period;
   final Map<int, String> accountNames;
   final StatementFilter filter;
+  final bool open;
 
   const PeriodTile({
     super.key,
     required this.period,
     required this.accountNames,
     required this.filter,
+    this.open = false,
   });
 
   @override
@@ -29,7 +32,8 @@ class PeriodTile extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        initiallyExpanded: period.start == DateTime(now.year, now.month),
+        initiallyExpanded:
+            open || period.start == DateTime(now.year, now.month),
         shape: const Border(),
         collapsedShape: const Border(),
         controlAffinity: ListTileControlAffinity.leading,

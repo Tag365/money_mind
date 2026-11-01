@@ -36,9 +36,14 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
   late final Stream<List<Tag>> _tags = DatabaseService.instance.watchTags();
 
   void _open(List<TagTotal> totals, String tag) {
-    final children = tagBreakdown(totals, income: widget.income, parent: tag);
+    final children = tagBreakdown(
+      totals,
+      income: widget.income,
+      parent: tag,
+    ).shares;
     final Widget page;
     if (widget.parent == null &&
+        tag != untagged &&
         (children.length > 1 || children.single.tag != tag)) {
       page = TagBreakdownPage(
         month: widget.month,
@@ -46,12 +51,14 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
         parent: tag,
       );
     } else {
-      // shortcut: lists all months, and for a parent its children too; give
-      // the list a period and exact matching if that gets confusing.
       page = ListWidget(
-        title: tag,
+        title: tag == untagged ? "No tag" : tag,
+        month: widget.month,
         filter: StatementFilter(
           tags: {tag},
+          // The parent's own row is without its children, listed beside it.
+          childTags: tag != widget.parent,
+          transfers: false,
           income: widget.income,
           expense: !widget.income,
         ),
@@ -86,12 +93,11 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
                 return const Center(child: CircularProgressIndicator());
               }
               final colors = tagColors(tagsSnapshot.data ?? const []);
-              final shares = tagBreakdown(
+              final (:total, :shares) = tagBreakdown(
                 snapshot.data!,
                 income: widget.income,
                 parent: widget.parent,
               );
-              final total = shares.fold(0.0, (s, e) => s + e.amount);
               final parentColor = tagColor(colors, widget.parent ?? untagged);
               Color colorAt(int i) {
                 final color = tagColor(colors, shares[i].tag);
@@ -136,9 +142,7 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
                       title: Text(_label(s.tag)),
                       subtitle: Text("${(s.amount / total * 100).round()} %"),
                       trailing: MoneyText(s.amount),
-                      onTap: s.tag == untagged
-                          ? null
-                          : () => _open(snapshot.data!, s.tag),
+                      onTap: () => _open(snapshot.data!, s.tag),
                     ),
                 ],
               );

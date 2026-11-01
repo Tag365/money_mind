@@ -85,7 +85,7 @@ class _MonthOverviewState extends State<MonthOverview> {
                 BreakdownCard(
                   title: "Expenses",
                   total: expense,
-                  shares: tagBreakdown(totals, income: false),
+                  shares: tagBreakdown(totals, income: false).shares,
                   colors: colors,
                   onTap: () => _openBreakdown(income: false),
                 ),
@@ -98,7 +98,7 @@ class _MonthOverviewState extends State<MonthOverview> {
                         child: BreakdownCard(
                           title: "Income",
                           total: income,
-                          shares: tagBreakdown(totals, income: true),
+                          shares: tagBreakdown(totals, income: true).shares,
                           colors: colors,
                           onTap: () => _openBreakdown(income: true),
                         ),

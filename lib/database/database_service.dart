@@ -625,12 +625,14 @@ class DatabaseService {
     // Escape LIKE wildcards so user input is matched literally.
     String literal(String s) =>
         s.replaceAllMapped(RegExp(r'[\\%_]'), (m) => '\\${m[0]}');
-    // Commas around the joined list make a tag match only whole entries.
+    // Commas around the joined list make a tag match only whole entries, and
+    // the empty tag match only an empty list (",,").
     final tagList = const Constant(',') + tbl.tags + const Constant(',');
     final hasTag = Expression.or([
       for (final tag in filter.tags) ...[
         tagList.like('%,${literal(tag)},%', escapeChar: '\\'),
-        tagList.like('%,${literal(tag + tagSeparator)}%', escapeChar: '\\'),
+        if (filter.childTags && tag.isNotEmpty)
+          tagList.like('%,${literal(tag + tagSeparator)}%', escapeChar: '\\'),
       ],
     ]);
     final text = '%${literal(filter.text)}%';
@@ -638,6 +640,7 @@ class DatabaseService {
     return Expression.and([
       if (filter.accounts.isNotEmpty) tbl.account.isIn(filter.accounts),
       if (filter.tags.isNotEmpty) filter.excludeTags ? hasTag.not() : hasTag,
+      if (!filter.transfers) tbl.transfer.isNull(),
       if (filter.expense && !filter.income) tbl.amount.isSmallerThanValue(0),
       if (filter.income && !filter.expense) tbl.amount.isBiggerOrEqualValue(0),
       if (filter.text.isNotEmpty)
