@@ -64,8 +64,26 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _closingDayMeta = const VerificationMeta(
+    'closingDay',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, type, balance, closed];
+  late final GeneratedColumn<int> closingDay = GeneratedColumn<int>(
+    'closing_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    type,
+    balance,
+    closed,
+    closingDay,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -101,6 +119,12 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         closed.isAcceptableOrUnknown(data['closed']!, _closedMeta),
       );
     }
+    if (data.containsKey('closing_day')) {
+      context.handle(
+        _closingDayMeta,
+        closingDay.isAcceptableOrUnknown(data['closing_day']!, _closingDayMeta),
+      );
+    }
     return context;
   }
 
@@ -132,6 +156,10 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.bool,
         data['${effectivePrefix}closed'],
       )!,
+      closingDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}closing_day'],
+      ),
     );
   }
 
@@ -152,12 +180,17 @@ class Account extends DataClass implements Insertable<Account> {
 
   /// Closed accounts keep their statements but take no new ones.
   final bool closed;
+
+  /// Day of the month a credit card's billing period closes on, clamped to
+  /// shorter months; null for the last day.
+  final int? closingDay;
   const Account({
     required this.id,
     required this.name,
     required this.type,
     required this.balance,
     required this.closed,
+    this.closingDay,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -169,6 +202,9 @@ class Account extends DataClass implements Insertable<Account> {
     }
     map['balance'] = Variable<double>(balance);
     map['closed'] = Variable<bool>(closed);
+    if (!nullToAbsent || closingDay != null) {
+      map['closing_day'] = Variable<int>(closingDay);
+    }
     return map;
   }
 
@@ -179,6 +215,9 @@ class Account extends DataClass implements Insertable<Account> {
       type: Value(type),
       balance: Value(balance),
       closed: Value(closed),
+      closingDay: closingDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(closingDay),
     );
   }
 
@@ -195,6 +234,7 @@ class Account extends DataClass implements Insertable<Account> {
       ),
       balance: serializer.fromJson<double>(json['balance']),
       closed: serializer.fromJson<bool>(json['closed']),
+      closingDay: serializer.fromJson<int?>(json['closingDay']),
     );
   }
   @override
@@ -208,6 +248,7 @@ class Account extends DataClass implements Insertable<Account> {
       ),
       'balance': serializer.toJson<double>(balance),
       'closed': serializer.toJson<bool>(closed),
+      'closingDay': serializer.toJson<int?>(closingDay),
     };
   }
 
@@ -217,12 +258,14 @@ class Account extends DataClass implements Insertable<Account> {
     AccountType? type,
     double? balance,
     bool? closed,
+    Value<int?> closingDay = const Value.absent(),
   }) => Account(
     id: id ?? this.id,
     name: name ?? this.name,
     type: type ?? this.type,
     balance: balance ?? this.balance,
     closed: closed ?? this.closed,
+    closingDay: closingDay.present ? closingDay.value : this.closingDay,
   );
   Account copyWithCompanion(AccountsCompanion data) {
     return Account(
@@ -231,6 +274,9 @@ class Account extends DataClass implements Insertable<Account> {
       type: data.type.present ? data.type.value : this.type,
       balance: data.balance.present ? data.balance.value : this.balance,
       closed: data.closed.present ? data.closed.value : this.closed,
+      closingDay: data.closingDay.present
+          ? data.closingDay.value
+          : this.closingDay,
     );
   }
 
@@ -241,13 +287,14 @@ class Account extends DataClass implements Insertable<Account> {
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('balance: $balance, ')
-          ..write('closed: $closed')
+          ..write('closed: $closed, ')
+          ..write('closingDay: $closingDay')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, balance, closed);
+  int get hashCode => Object.hash(id, name, type, balance, closed, closingDay);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -256,7 +303,8 @@ class Account extends DataClass implements Insertable<Account> {
           other.name == this.name &&
           other.type == this.type &&
           other.balance == this.balance &&
-          other.closed == this.closed);
+          other.closed == this.closed &&
+          other.closingDay == this.closingDay);
 }
 
 class AccountsCompanion extends UpdateCompanion<Account> {
@@ -265,12 +313,14 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<AccountType> type;
   final Value<double> balance;
   final Value<bool> closed;
+  final Value<int?> closingDay;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.balance = const Value.absent(),
     this.closed = const Value.absent(),
+    this.closingDay = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -278,6 +328,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     required AccountType type,
     this.balance = const Value.absent(),
     this.closed = const Value.absent(),
+    this.closingDay = const Value.absent(),
   }) : name = Value(name),
        type = Value(type);
   static Insertable<Account> custom({
@@ -286,6 +337,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Expression<String>? type,
     Expression<double>? balance,
     Expression<bool>? closed,
+    Expression<int>? closingDay,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -293,6 +345,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       if (type != null) 'type': type,
       if (balance != null) 'balance': balance,
       if (closed != null) 'closed': closed,
+      if (closingDay != null) 'closing_day': closingDay,
     });
   }
 
@@ -302,6 +355,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<AccountType>? type,
     Value<double>? balance,
     Value<bool>? closed,
+    Value<int?>? closingDay,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -309,6 +363,7 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       type: type ?? this.type,
       balance: balance ?? this.balance,
       closed: closed ?? this.closed,
+      closingDay: closingDay ?? this.closingDay,
     );
   }
 
@@ -332,6 +387,9 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (closed.present) {
       map['closed'] = Variable<bool>(closed.value);
     }
+    if (closingDay.present) {
+      map['closing_day'] = Variable<int>(closingDay.value);
+    }
     return map;
   }
 
@@ -342,7 +400,8 @@ class AccountsCompanion extends UpdateCompanion<Account> {
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('balance: $balance, ')
-          ..write('closed: $closed')
+          ..write('closed: $closed, ')
+          ..write('closingDay: $closingDay')
           ..write(')'))
         .toString();
   }
@@ -531,7 +590,8 @@ class Recurrence extends DataClass implements Insertable<Recurrence> {
   /// Occurrences already created, i.e. the index of the next one.
   final int generated;
 
-  /// Create the next statement up to a month before it is due (only one).
+  /// Unused: every series now gets its next statement a month ahead. Kept so
+  /// old databases and backups need no migration.
   final bool ahead;
   const Recurrence({
     required this.id,
@@ -1885,6 +1945,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       required AccountType type,
       Value<double> balance,
       Value<bool> closed,
+      Value<int?> closingDay,
     });
 typedef $$AccountsTableUpdateCompanionBuilder =
     AccountsCompanion Function({
@@ -1893,6 +1954,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<AccountType> type,
       Value<double> balance,
       Value<bool> closed,
+      Value<int?> closingDay,
     });
 
 final class $$AccountsTableReferences
@@ -1950,6 +2012,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get closed => $composableBuilder(
     column: $table.closed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get closingDay => $composableBuilder(
+    column: $table.closingDay,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2012,6 +2079,11 @@ class $$AccountsTableOrderingComposer
     column: $table.closed,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get closingDay => $composableBuilder(
+    column: $table.closingDay,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -2037,6 +2109,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get closed =>
       $composableBuilder(column: $table.closed, builder: (column) => column);
+
+  GeneratedColumn<int> get closingDay => $composableBuilder(
+    column: $table.closingDay,
+    builder: (column) => column,
+  );
 
   Expression<T> statementsRefs<T extends Object>(
     Expression<T> Function($$StatementsTableAnnotationComposer a) f,
@@ -2097,12 +2174,14 @@ class $$AccountsTableTableManager
                 Value<AccountType> type = const Value.absent(),
                 Value<double> balance = const Value.absent(),
                 Value<bool> closed = const Value.absent(),
+                Value<int?> closingDay = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
                 type: type,
                 balance: balance,
                 closed: closed,
+                closingDay: closingDay,
               ),
           createCompanionCallback:
               ({
@@ -2111,12 +2190,14 @@ class $$AccountsTableTableManager
                 required AccountType type,
                 Value<double> balance = const Value.absent(),
                 Value<bool> closed = const Value.absent(),
+                Value<int?> closingDay = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
                 type: type,
                 balance: balance,
                 closed: closed,
+                closingDay: closingDay,
               ),
           withReferenceMapper: (p0) => p0
               .map(

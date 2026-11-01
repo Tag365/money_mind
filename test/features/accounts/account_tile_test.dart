@@ -19,6 +19,7 @@ void main() {
     Account account,
     VoidCallback onClose, {
     VoidCallback? onEdit,
+    VoidCallback? onSettle,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -27,6 +28,7 @@ void main() {
             child: AccountTile(
               account,
               onEdit: onEdit ?? () {},
+              onSettle: onSettle,
               onClose: onClose,
               onTap: () {},
             ),
@@ -73,4 +75,22 @@ void main() {
       expect(edited, 1);
     });
   }
+
+  testWidgets('Settle shows only when the tile is given onSettle', (
+    tester,
+  ) async {
+    await show(tester, account(closed: false), () {});
+    expect(find.text('Settle'), findsNothing);
+
+    var settled = 0;
+    await tester.pumpWidget(const SizedBox());
+    await show(
+      tester,
+      account(closed: false),
+      () {},
+      onSettle: () => settled++,
+    );
+    await tester.tap(find.text('Settle'));
+    expect(settled, 1);
+  });
 }

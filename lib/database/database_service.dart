@@ -63,20 +63,68 @@ class DatabaseService {
   @visibleForTesting
   set database(AppDatabase db) => _database = db;
 
-  Future<int> addAccount(String name, AccountType type) async {
+  Future<int> addAccount(
+    String name,
+    AccountType type, {
+    int? closingDay,
+  }) async {
     return await database
         .into(database.accounts)
-        .insert(AccountsCompanion(name: Value(name), type: Value(type)));
+        .insert(
+          AccountsCompanion(
+            name: Value(name),
+            type: Value(type),
+            closingDay: Value(closingDay),
+          ),
+        );
   }
 
   Future<void> updateAccount(
     Account account,
     String name,
-    AccountType type,
-  ) async {
-    await (database.update(database.accounts)
-          ..where((tbl) => tbl.id.equals(account.id)))
-        .write(AccountsCompanion(name: Value(name), type: Value(type)));
+    AccountType type, {
+    int? closingDay,
+  }) async {
+    await (database.update(
+      database.accounts,
+    )..where((tbl) => tbl.id.equals(account.id))).write(
+      AccountsCompanion(
+        name: Value(name),
+        type: Value(type),
+        closingDay: Value(closingDay),
+      ),
+    );
+  }
+
+  /// What settles credit card [card] for the billing period ending before
+  /// [periodEnd]: its balance then, less what was paid into it by transfer
+  /// since. Zero or less when nothing is owed.
+  Future<double> amountDue(int card, DateTime periodEnd) async {
+    final s = database.statements;
+    final sum = s.amount.sum();
+    final query = database.selectOnly(s)
+      ..addColumns([sum])
+      ..where(
+        s.account.equals(card) &
+            (s.paymentDate.isSmallerThanValue(periodEnd) |
+                (s.transfer.isNotNull() & s.amount.isBiggerThanValue(0))),
+      );
+    return -(await query.map((row) => row.read(sum)).getSingle() ?? 0);
+  }
+
+  /// The account that last transferred money into [card], if any.
+  Future<int?> lastTransferSource(int card) async {
+    final row = await database
+        .customSelect(
+          'SELECT o.account FROM statements s '
+          'JOIN statements o ON o.id = s.transfer '
+          'WHERE s.account = ? AND s.amount > 0 '
+          'ORDER BY s.payment_date DESC, s.id DESC LIMIT 1',
+          variables: [Variable.withInt(card)],
+          readsFrom: {database.statements},
+        )
+        .getSingleOrNull();
+    return row?.read<int>('account');
   }
 
   /// Marks [account] closed: its statements and balance stay, but it takes no
@@ -276,13 +324,14 @@ class DatabaseService {
 
   /// Moves [amount] from account [from] to [to] as two linked statements
   /// tagged "Transfer", so the tag can be used to filter transfers out of
-  /// totals.
+  /// totals. Both sides get [title] when given.
   Future<void> addTransfer(
     Account from,
     Account to,
     double amount,
-    DateTime date,
-  ) async {
+    DateTime date, {
+    String? title,
+  }) async {
     assert(from.id != to.id && amount > 0);
     StatementsCompanion side(String title, int account, double amount) =>
         StatementsCompanion.insert(
@@ -302,12 +351,12 @@ class DatabaseService {
       if (tagExists.isEmpty) await addTag(transferTag, 0xFF607D8B);
       final out = await database
           .into(database.statements)
-          .insert(side('Transfer to ${to.name}', from.id, -amount));
+          .insert(side(title ?? 'Transfer to ${to.name}', from.id, -amount));
       final into = await database
           .into(database.statements)
           .insert(
             side(
-              'Transfer from ${from.name}',
+              title ?? 'Transfer from ${from.name}',
               to.id,
               amount,
             ).copyWith(transfer: Value(out)),

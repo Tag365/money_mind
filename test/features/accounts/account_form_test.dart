@@ -122,6 +122,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Credit card').last);
     await tester.pumpAndSettle();
+    // Only cards have one.
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Closing day'),
+      '15',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
@@ -131,6 +136,7 @@ void main() {
     );
     expect(edited!.name, 'Visa');
     expect(edited.type, AccountType.creditCard);
+    expect(edited.closingDay, 15);
     expect(
       await tester.runAsync(() => db.select(db.statements).get()),
       isEmpty,

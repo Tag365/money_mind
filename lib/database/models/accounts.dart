@@ -12,4 +12,8 @@ class Accounts extends Table {
 
   /// Closed accounts keep their statements but take no new ones.
   BoolColumn get closed => boolean().withDefault(const Constant(false))();
+
+  /// Day of the month a credit card's billing period closes on, clamped to
+  /// shorter months; null for the last day.
+  IntColumn get closingDay => integer().nullable()();
 }

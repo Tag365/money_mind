@@ -5,10 +5,27 @@ import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 
 /// Bottom sheet that moves money between two of [accounts] (at least two).
+/// [from], [to] and [amount] fill it in; with a [title] it is the sheet's
+/// heading and the title of both statements.
 class TransferForm extends StatefulWidget {
   final List<Account> accounts;
+  final Account? from;
+  final Account? to;
+  final double? amount;
+  final String? title;
 
-  const TransferForm({super.key, required this.accounts});
+  /// Shown below the amount, e.g. where it comes from.
+  final String? amountHelper;
+
+  const TransferForm({
+    super.key,
+    required this.accounts,
+    this.from,
+    this.to,
+    this.amount,
+    this.title,
+    this.amountHelper,
+  });
 
   @override
   State<TransferForm> createState() => _TransferFormState();
@@ -16,9 +33,11 @@ class TransferForm extends StatefulWidget {
 
 class _TransferFormState extends State<TransferForm> {
   final _formKey = GlobalKey<FormState>();
-  final amountController = TextEditingController();
-  late Account from = widget.accounts[0];
-  late Account to = widget.accounts[1];
+  late final amountController = TextEditingController(
+    text: widget.amount?.toStringAsFixed(2).replaceAll('.', ','),
+  );
+  late Account from = widget.from ?? widget.accounts[0];
+  late Account to = widget.to ?? widget.accounts[1];
   DateTime date = DateTime.now();
   // Set for good: the sheet closes after saving.
   bool _saving = false;
@@ -31,6 +50,7 @@ class _TransferFormState extends State<TransferForm> {
       to,
       evaluateAmount(amountController.text)!,
       date,
+      title: widget.title,
     );
     if (mounted) Navigator.pop(context);
   }
@@ -76,15 +96,19 @@ class _TransferFormState extends State<TransferForm> {
           spacing: 20,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Transfer', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              widget.title ?? 'Transfer',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             _accountField('From', from, (a) => from = a),
             _accountField('To', to, (a) => to = a),
             TextFormField(
               controller: amountController,
-              autofocus: true,
-              decoration: const InputDecoration(
+              autofocus: widget.amount == null,
+              decoration: InputDecoration(
                 labelText: 'Amount',
-                prefixIcon: Icon(Icons.euro_sharp),
+                helperText: widget.amountHelper,
+                prefixIcon: const Icon(Icons.euro_sharp),
               ),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,

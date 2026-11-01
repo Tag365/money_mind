@@ -23,8 +23,17 @@ class _AccountFormState extends State<AccountForm> {
     text: widget.account?.name,
   );
   final balanceController = TextEditingController();
+  late final closingDayController = TextEditingController(
+    text: widget.account?.closingDay?.toString(),
+  );
   DatabaseService databaseService = DatabaseService.instance;
   late AccountType? accountType = widget.account?.type ?? AccountType.debit;
+
+  bool get _creditCard => accountType == AccountType.creditCard;
+
+  /// Null for the last day of the month, and for accounts that are no card.
+  int? get _closingDay =>
+      _creditCard ? int.tryParse(closingDayController.text) : null;
   // Set for good: the sheet closes after saving.
   bool _saving = false;
 
@@ -40,6 +49,7 @@ class _AccountFormState extends State<AccountForm> {
         account,
         accountNameController.text,
         accountType!,
+        closingDay: _closingDay,
       );
       if (mounted) Navigator.pop(context, account.id);
       return;
@@ -48,6 +58,7 @@ class _AccountFormState extends State<AccountForm> {
     int accountId = await databaseService.addAccount(
       accountNameController.text,
       accountType!,
+      closingDay: _closingDay,
     );
 
     await databaseService.addStatement(
@@ -68,6 +79,7 @@ class _AccountFormState extends State<AccountForm> {
     // Clean up the controller when the widget is disposed.
     accountNameController.dispose();
     balanceController.dispose();
+    closingDayController.dispose();
     super.dispose();
   }
 
@@ -151,6 +163,28 @@ class _AccountFormState extends State<AccountForm> {
                               },
                             ),
                           ),
+                          if (_creditCard)
+                            TextFormField(
+                              controller: closingDayController,
+                              decoration: const InputDecoration(
+                                labelText: 'Closing day',
+                                helperText:
+                                    'Day of the month the bill closes; '
+                                    'empty for the last day',
+                                prefixIcon: Icon(Icons.event_outlined),
+                              ),
+                              keyboardType: TextInputType.number,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return null;
+                                }
+                                final day = int.tryParse(value);
+                                if (day == null || day < 1 || day > 31) {
+                                  return 'Please enter a day from 1 to 31';
+                                }
+                                return null;
+                              },
+                            ),
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton(
