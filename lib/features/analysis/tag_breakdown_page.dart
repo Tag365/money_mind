@@ -5,6 +5,7 @@ import 'package:money_mind/common/share_bar.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/analysis/tag_breakdown.dart';
+import 'package:money_mind/features/analysis/trend.dart';
 import 'package:money_mind/features/statements/statement_filter.dart';
 import 'package:money_mind/features/statements/statement_list.dart';
 
@@ -34,6 +35,16 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
         DateTime(widget.month.year, widget.month.month + 1),
       );
   late final Stream<List<Tag>> _tags = DatabaseService.instance.watchTags();
+
+  // For the average of the six months before.
+  late final DateTime _historyStart = DateTime(
+    widget.month.year,
+    widget.month.month - 6,
+  );
+  late final Stream<List<TagTotal>> _history = DatabaseService.instance
+      .watchTagTotals(_historyStart, widget.month);
+  late final Stream<List<PeriodTotal>> _months = DatabaseService.instance
+      .watchTotals(yearly: false, transfers: false);
 
   void _open(List<TagTotal> totals, String tag) {
     final children = tagBreakdown(totals, income: widget.income, parent: tag);
@@ -71,81 +82,110 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return GlassBackground(
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.parent ?? (widget.income ? "Income" : "Expenses")),
         ),
         body: StreamBuilder(
-          stream: _tags,
-          builder: (context, tagsSnapshot) => StreamBuilder(
-            stream: _totals,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(child: Text("Error: ${snapshot.error}"));
-              }
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final colors = tagColors(tagsSnapshot.data ?? const []);
-              final shares = tagBreakdown(
-                snapshot.data!,
+          stream: _history,
+          builder: (context, historySnapshot) => StreamBuilder(
+            stream: _months,
+            builder: (context, monthsSnapshot) => _content(
+              tagAverages(
+                historySnapshot.data ?? const [],
+                monthsWithHistory(
+                  monthsSnapshot.data ?? const [],
+                  _historyStart,
+                  widget.month,
+                ),
                 income: widget.income,
                 parent: widget.parent,
-              );
-              final total = shares.fold(0.0, (s, e) => s + e.amount);
-              final parentColor = tagColor(colors, widget.parent ?? untagged);
-              Color colorAt(int i) {
-                final color = tagColor(colors, shares[i].tag);
-                // Imported children share their parent's color; lighten them
-                // by rank so the bar still shows the split.
-                if (widget.parent == null || color != parentColor) return color;
-                return Color.lerp(
-                  color,
-                  Colors.white,
-                  (i * 0.15).clamp(0, 0.6),
-                )!;
-              }
-
-              return ListView(
-                padding: const EdgeInsets.only(bottom: 16),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 8,
-                      children: [
-                        Text(
-                          MaterialLocalizations.of(
-                            context,
-                          ).formatMonthYear(widget.month),
-                          style: text.titleMedium,
-                        ),
-                        MoneyText(total, style: text.headlineSmall),
-                        ShareBar([
-                          for (final (i, s) in shares.indexed)
-                            (colorAt(i), s.amount),
-                        ]),
-                      ],
-                    ),
-                  ),
-                  if (shares.isEmpty)
-                    const Center(child: Text("Nothing this month.")),
-                  for (final (i, s) in shares.indexed)
-                    ListTile(
-                      leading: Icon(Icons.circle, size: 12, color: colorAt(i)),
-                      title: Text(_label(s.tag)),
-                      subtitle: Text("${(s.amount / total * 100).round()} %"),
-                      trailing: MoneyText(s.amount),
-                      onTap: () => _open(snapshot.data!, s.tag),
-                    ),
-                ],
-              );
-            },
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// The month's breakdown, each row compared to [averages] when it has one.
+  Widget _content(Map<String, double> averages) {
+    final text = Theme.of(context).textTheme;
+    return StreamBuilder(
+      stream: _tags,
+      builder: (context, tagsSnapshot) => StreamBuilder(
+        stream: _totals,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final colors = tagColors(tagsSnapshot.data ?? const []);
+          final shares = tagBreakdown(
+            snapshot.data!,
+            income: widget.income,
+            parent: widget.parent,
+          );
+          final total = shares.fold(0.0, (s, e) => s + e.amount);
+          final parentColor = tagColor(colors, widget.parent ?? untagged);
+          Color colorAt(int i) {
+            final color = tagColor(colors, shares[i].tag);
+            // Imported children share their parent's color; lighten them
+            // by rank so the bar still shows the split.
+            if (widget.parent == null || color != parentColor) return color;
+            return Color.lerp(color, Colors.white, (i * 0.15).clamp(0, 0.6))!;
+          }
+
+          return ListView(
+            padding: const EdgeInsets.only(bottom: 16),
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      MaterialLocalizations.of(
+                        context,
+                      ).formatMonthYear(widget.month),
+                      style: text.titleMedium,
+                    ),
+                    MoneyText(total, style: text.headlineSmall),
+                    ShareBar([
+                      for (final (i, s) in shares.indexed)
+                        (colorAt(i), s.amount),
+                    ]),
+                    if (averages.isEmpty && shares.isNotEmpty)
+                      Text(
+                        "Nothing in the months before to compare with.",
+                        style: text.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+              if (shares.isEmpty)
+                const Center(child: Text("Nothing this month.")),
+              for (final (i, s) in shares.indexed)
+                ListTile(
+                  leading: Icon(Icons.circle, size: 12, color: colorAt(i)),
+                  title: Text(_label(s.tag)),
+                  subtitle: Text(
+                    [
+                      "${(s.amount / total * 100).round()} %",
+                      if (averages.isNotEmpty)
+                        versusAverage(s.amount, averages[s.tag] ?? 0),
+                    ].join(" · "),
+                  ),
+                  trailing: MoneyText(s.amount),
+                  onTap: () => _open(snapshot.data!, s.tag),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

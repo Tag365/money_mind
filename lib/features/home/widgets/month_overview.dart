@@ -3,16 +3,15 @@ import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/analysis/tag_breakdown.dart';
 import 'package:money_mind/features/analysis/tag_breakdown_page.dart';
+import 'package:money_mind/features/analysis/trend_page.dart';
 import 'package:money_mind/features/home/widgets/breakdown_card.dart';
 import 'package:money_mind/features/home/widgets/net_card.dart';
 
 /// Expenses and income of a month by tag, and the net, starting with the
-/// current month; arrows step through months. Tapping the net calls
-/// [onOpenStatements].
+/// current month; arrows step through months. Tapping the net opens the
+/// trend, and a month picked there shows here.
 class MonthOverview extends StatefulWidget {
-  final VoidCallback onOpenStatements;
-
-  const MonthOverview({super.key, required this.onOpenStatements});
+  const MonthOverview({super.key});
 
   @override
   State<MonthOverview> createState() => _MonthOverviewState();
@@ -36,6 +35,18 @@ class _MonthOverviewState extends State<MonthOverview> {
     _month = DateTime(_month.year, _month.month + months);
     _totals = _watch();
   });
+
+  Future<void> _openTrend() async {
+    final month = await Navigator.of(context).push<DateTime>(
+      MaterialPageRoute(builder: (_) => TrendPage(month: _month)),
+    );
+    if (month != null) {
+      setState(() {
+        _month = month;
+        _totals = _watch();
+      });
+    }
+  }
 
   void _openBreakdown({required bool income}) => Navigator.of(context).push(
     MaterialPageRoute(
@@ -107,7 +118,7 @@ class _MonthOverviewState extends State<MonthOverview> {
                         child: NetCard(
                           income: income,
                           expense: expense,
-                          onTap: widget.onOpenStatements,
+                          onTap: _openTrend,
                         ),
                       ),
                     ],
