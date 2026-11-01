@@ -10,8 +10,7 @@ import 'package:money_mind/features/settings/settings_page.dart';
 
 /// Overview at a glance: total balance, a month by tag, what is due next and
 /// what recurring statements cost per month.
-/// Tapping the total or the net calls [onOpenTab] with the index of the
-/// Accounts or Statements tab.
+/// Tapping the total calls [onOpenTab] with the index of the Accounts tab.
 class HomeWidget extends StatefulWidget {
   final ValueChanged<int> onOpenTab;
 
@@ -66,7 +65,7 @@ class _HomeState extends State<HomeWidget> {
           padding: const EdgeInsets.only(bottom: 16),
           children: [
             TotalBalanceCard(accounts, onTap: () => widget.onOpenTab(3)),
-            MonthOverview(onOpenStatements: () => widget.onOpenTab(2)),
+            const MonthOverview(),
             StreamBuilder(
               stream: _upcoming,
               builder: (context, snapshot) =>
