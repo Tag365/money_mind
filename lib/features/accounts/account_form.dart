@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import 'package:money_mind/common/amount_expression.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/database/models/account_type.dart';
 
@@ -25,13 +25,13 @@ class _AccountFormState extends State<AccountForm> {
       return;
     }
     setState(() => _saving = true);
-    final double initialBalance = double.parse(balanceController.text);
+    final double initialBalance = evaluateAmount(balanceController.text)!;
     int accountId = await databaseService.addAccount(
       accountNameController.text,
       accountType!,
     );
 
-    databaseService.addStatement(
+    await databaseService.addStatement(
       "Initial Balance",
       initialBalance,
       accountId,
@@ -97,19 +97,20 @@ class _AccountFormState extends State<AccountForm> {
                             controller: balanceController,
                             decoration: InputDecoration(
                               labelText: "Initial balance",
+                              helperText:
+                                  "Negative if you owe it, e.g. a credit card",
                               prefixIcon: Icon(Icons.euro_sharp),
                             ),
-                            inputFormatters: <TextInputFormatter>[
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'([1-9]\d*\.?\d{0,2})|(0\.?\d{0,2})'),
-                              ),
-                            ],
-                            keyboardType: TextInputType.number,
+                            // signed: shows a minus key on the number keyboard.
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                              signed: true,
+                            ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter an initial balance';
                               }
-                              if (double.tryParse(value) == null) {
+                              if (evaluateAmount(value) == null) {
                                 return 'Please enter a valid number';
                               }
                               return null;

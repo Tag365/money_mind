@@ -423,6 +423,11 @@ class DatabaseService {
     });
   }
 
+  /// Reruns the watch queries on statements, e.g. balances and upcoming
+  /// payments, which compare with now but only rerun when a table changes.
+  void recheckDates() =>
+      database.notifyUpdates({TableUpdate.onTable(database.statements)});
+
   /// The recurrence of the statement with [statementId], or null when it does
   /// not repeat.
   Stream<Recurrence?> watchRecurrence(int statementId) {
