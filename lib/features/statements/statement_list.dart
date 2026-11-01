@@ -12,17 +12,19 @@ import 'package:money_mind/features/statements/widgets/period_tile.dart';
 
 /// The Statements tab. Pushed as its own page with a [title] and a [filter],
 /// e.g. to show one account's statements, and optionally only one [month],
-/// opened.
+/// opened, with a [header] above it.
 class ListWidget extends StatefulWidget {
   final String title;
   final StatementFilter filter;
   final DateTime? month;
+  final Widget? header;
 
   const ListWidget({
     super.key,
     this.title = 'Statements',
     this.filter = const StatementFilter(),
     this.month,
+    this.header,
   });
 
   @override
@@ -151,16 +153,24 @@ class _ListState extends State<ListWidget> {
                   (totals) => SlidableAutoCloseBehavior(
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount: totals.length,
-                      itemBuilder: (context, index) => PeriodTile(
-                        // Keeps a period open when the totals stream emits
-                        // again.
-                        key: PageStorageKey(totals[index].start),
-                        period: totals[index],
-                        accountNames: _accountNames,
-                        filter: _filter,
-                        open: widget.month != null,
-                      ),
+                      itemCount:
+                          totals.length + (widget.header == null ? 0 : 1),
+                      itemBuilder: (context, index) {
+                        final header = widget.header;
+                        if (header != null) {
+                          if (index == 0) return header;
+                          index--;
+                        }
+                        return PeriodTile(
+                          // Keeps a period open when the totals stream emits
+                          // again.
+                          key: PageStorageKey(totals[index].start),
+                          period: totals[index],
+                          accountNames: _accountNames,
+                          filter: _filter,
+                          open: widget.month != null,
+                        );
+                      },
                     ),
                   ),
                 ),

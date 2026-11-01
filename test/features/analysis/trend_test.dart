@@ -15,6 +15,50 @@ void main() {
     expect(series.map((p) => p.income).toList().sublist(8), [20, 0, 10, 0]);
   });
 
+  test(
+    'the monthly average skips the running month and months before data',
+    () {
+      // Data since October; a tag only spent in October and December.
+      final all = [
+        month(2027, 1, 0, -1),
+        month(2026, 12, 0, -1),
+        month(2026, 11, 0, -1),
+        month(2026, 10, 0, -1),
+      ];
+      final tag = [month(2026, 12, 0, -30), month(2026, 10, 0, -60)];
+      final months = monthSeries(tag, DateTime(2027, 1), 12);
+      // Oct, Nov (zero) and Dec count; January is still running.
+      expect(
+        monthlyAverage(
+          months,
+          all,
+          (p) => p.expense,
+          now: DateTime(2027, 1, 15),
+        ),
+        -30,
+      );
+      // Up to November: October and an empty November.
+      expect(
+        monthlyAverage(
+          monthSeries(tag, DateTime(2026, 11), 12),
+          all,
+          (p) => p.expense,
+          now: DateTime(2027, 1, 15),
+        ),
+        -30,
+      );
+      expect(
+        monthlyAverage(
+          months,
+          all,
+          (p) => p.expense,
+          now: DateTime(2026, 10, 5),
+        ),
+        isNull,
+      );
+    },
+  );
+
   test('averages only count months since the first data', () {
     final totals = [month(2026, 11, 0, -10), month(2026, 10, 0, -20)];
     // Six months before December, but data only since October.
