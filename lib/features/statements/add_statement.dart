@@ -15,7 +15,7 @@ import 'package:money_mind/features/statements/widgets/title_suggestions.dart';
 import 'package:money_mind/features/tags/tag_select_dialog.dart';
 import 'package:money_mind/features/tags/widgets/tags_field.dart';
 
-typedef _Repeat = ({RecurrenceUnit unit, int every, bool ahead});
+typedef _Repeat = ({RecurrenceUnit unit, int every});
 
 /// "12,50" for -12.5: how the amount field shows a stored amount.
 String _amountText(double amount) =>
@@ -207,12 +207,7 @@ class _AddWidgetState extends State<AddWidget> {
       noteController.text,
     );
     if (_repeat case final r?) {
-      await databaseService.setRecurrence(
-        statement,
-        r.unit,
-        r.every,
-        ahead: r.ahead,
-      );
+      await databaseService.setRecurrence(statement, r.unit, r.every);
     }
     if (!mounted) return;
     if (widget.copyOf != null) {
@@ -345,10 +340,10 @@ class _AddWidgetState extends State<AddWidget> {
                 unit: r.unit,
                 every: r.every,
                 generated: 1,
-                ahead: r.ahead,
+                ahead: false,
               ),
-        onSave: (unit, every, ahead) async =>
-            setState(() => _repeat = (unit: unit, every: every, ahead: ahead)),
+        onSave: (unit, every) async =>
+            setState(() => _repeat = (unit: unit, every: every)),
         onTurnOff: () async => setState(() => _repeat = null),
       ),
     );

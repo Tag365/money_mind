@@ -53,6 +53,7 @@ class Recurrences extends Table {
   /// Occurrences already created, i.e. the index of the next one.
   IntColumn get generated => integer()();
 
-  /// Create the next statement up to a month before it is due (only one).
+  /// Unused: every series now gets its next statement a month ahead. Kept so
+  /// old databases and backups need no migration.
   BoolColumn get ahead => boolean().withDefault(const Constant(false))();
 }

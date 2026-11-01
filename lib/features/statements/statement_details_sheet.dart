@@ -44,8 +44,7 @@ class _StatementDetailsSheetState extends State<StatementDetailsSheet> {
       builder: (_) => RecurrenceDialog(
         from: latest.paymentDate,
         recurrence: recurrence,
-        onSave: (unit, every, ahead) =>
-            service.setRecurrence(statement, unit, every, ahead: ahead),
+        onSave: (unit, every) => service.setRecurrence(statement, unit, every),
         onTurnOff: () => service.stopRecurrence(recurrence!.id),
       ),
     );

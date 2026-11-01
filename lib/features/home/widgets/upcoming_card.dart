@@ -48,7 +48,8 @@ class UpcomingCard extends StatelessWidget {
               ),
               subtitle: Text(
                 [
-                  localizations.formatMediumDate(date.toLocal()),
+                  // With the year: the list can cross into the next one.
+                  localizations.formatShortDate(date.toLocal()),
                   ?accountNames[statement.account],
                 ].join(" · "),
                 overflow: TextOverflow.ellipsis,
