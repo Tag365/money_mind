@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # publish releases
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
@@ -66,11 +66,40 @@ jobs:
           header: coverage
           path: coverage/summary.md
 
+      - name: Set up release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            # Fork PRs get no secrets and build with the debug key; a release must never be debug-signed.
+            [ "$GITHUB_REF" != refs/heads/master ] && exit 0
+            echo "::error::KEYSTORE_BASE64 secret is missing" && exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
       - name: Build APK
         run: |
-          flutter build apk --release
+          flutter build apk --release --build-number=${{ github.run_number }}
 
       - uses: actions/upload-artifact@v7
         with:
           name: money_mind-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)+${{ github.run_number }}"
+          cp build/app/outputs/flutter-apk/app-release.apk "money_mind-$tag.apk"
+          gh release create "$tag" "money_mind-$tag.apk" --target "$GITHUB_SHA" --title "$tag" --generate-notes
