@@ -26,8 +26,6 @@ void main() {
     await add(-30, ['Food : Groceries']);
     await add(-20, ['Food : Groceries']);
     await add(-10, ['Food']);
-    await add(-40, ['Car', 'Food']);
-    await add(-7, ['Food : Groceries', 'Food : Bakery']);
     await add(-5, []);
     await add(2000, ['Salary']);
     await add(-99, ['Food'], 31); // October 31 is still in range
@@ -47,26 +45,18 @@ void main() {
       DateTime(2026, 10, 6),
     );
 
-    final totals = await service
-        .watchTagTotals(DateTime(2026, 10), DateTime(2026, 11))
-        .first;
+    Future<List<TagTotal>> october() =>
+        service.watchTagTotals(DateTime(2026, 10), DateTime(2026, 11)).first;
 
+    var totals = await october();
     final top = tagBreakdown(totals, income: false);
-    // Each statement once, though the one tagged Car and Food counts for both.
-    expect(top.total, -211);
-    expect(top.shares, [
-      (tag: 'Food', amount: -206.0),
-      (tag: 'Car', amount: -40.0),
-      (tag: untagged, amount: -5.0),
-    ]);
+    expect(top, [(tag: 'Food', amount: -159.0), (tag: untagged, amount: -5.0)]);
     final food = tagBreakdown(totals, income: false, parent: 'Food');
-    expect(food.total, -206);
-    expect(food.shares, [
-      (tag: 'Food', amount: -149.0),
-      (tag: 'Food : Groceries', amount: -57.0),
-      (tag: 'Food : Bakery', amount: -7.0),
+    expect(food, [
+      (tag: 'Food', amount: -109.0),
+      (tag: 'Food : Groceries', amount: -50.0),
     ]);
-    expect(tagBreakdown(totals, income: true).shares, [
+    expect(tagBreakdown(totals, income: true), [
       (tag: 'Salary', amount: 2000.0),
     ]);
 
@@ -86,12 +76,26 @@ void main() {
       return months.firstWhere((p) => p.month == 10).expense;
     }
 
-    for (final s in top.shares) {
+    for (final s in top) {
       expect(await listed(s.tag), s.amount, reason: s.tag);
     }
-    for (final s in food.shares) {
+    for (final s in food) {
       expect(await listed(s.tag, parent: 'Food'), s.amount, reason: s.tag);
     }
+
+    // With several tags, a statement counts towards its first one only.
+    await add(-40, ['Car', 'Food']);
+    await add(-7, ['Food : Groceries', 'Food : Bakery']);
+    totals = await october();
+    expect(tagBreakdown(totals, income: false), [
+      (tag: 'Food', amount: -166.0),
+      (tag: 'Car', amount: -40.0),
+      (tag: untagged, amount: -5.0),
+    ]);
+    expect(tagBreakdown(totals, income: false, parent: 'Food'), [
+      (tag: 'Food', amount: -109.0),
+      (tag: 'Food : Groceries', amount: -57.0),
+    ]);
     await db.close();
   });
 }

@@ -36,11 +36,7 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
   late final Stream<List<Tag>> _tags = DatabaseService.instance.watchTags();
 
   void _open(List<TagTotal> totals, String tag) {
-    final children = tagBreakdown(
-      totals,
-      income: widget.income,
-      parent: tag,
-    ).shares;
+    final children = tagBreakdown(totals, income: widget.income, parent: tag);
     final Widget page;
     if (widget.parent == null &&
         tag != untagged &&
@@ -93,11 +89,12 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
                 return const Center(child: CircularProgressIndicator());
               }
               final colors = tagColors(tagsSnapshot.data ?? const []);
-              final (:total, :shares) = tagBreakdown(
+              final shares = tagBreakdown(
                 snapshot.data!,
                 income: widget.income,
                 parent: widget.parent,
               );
+              final total = shares.fold(0.0, (s, e) => s + e.amount);
               final parentColor = tagColor(colors, widget.parent ?? untagged);
               Color colorAt(int i) {
                 final color = tagColor(colors, shares[i].tag);

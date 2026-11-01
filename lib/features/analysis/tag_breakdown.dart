@@ -8,38 +8,28 @@ const untagged = '';
 typedef TagShare = ({String tag, double amount});
 
 /// The amounts of [totals] per top-level tag, or with [parent] per tag of
-/// that family (the parent itself included), largest first, and their
-/// [total]. Expenses unless [income] is set.
-///
-/// A statement counts fully towards each of its tags, as the tag filter
-/// matches it, but once towards [total]; so shares can add up to more.
-({double total, List<TagShare> shares}) tagBreakdown(
+/// that family (the parent itself included), largest first. Expenses unless
+/// [income] is set.
+List<TagShare> tagBreakdown(
   List<TagTotal> totals, {
   required bool income,
   String? parent,
 }) {
-  var total = 0.0;
   final sums = <String, double>{};
   for (final t in totals) {
     final amount = income ? t.income : t.expense;
     if (amount == 0) continue;
-    final keys = t.tags.isEmpty
-        ? {if (parent == null) untagged}
-        : {
-            for (final tag in t.tags)
-              if (parent == null)
-                topLevelTag(tag)
-              else if (topLevelTag(tag) == parent)
-                tag,
-          };
-    if (keys.isNotEmpty) total += amount;
-    for (final key in keys) {
-      sums[key] = (sums[key] ?? 0) + amount;
-    }
+    // shortcut: a statement with several tags counts towards its first one
+    // only, while the tag filter of the list a row opens matches any of them;
+    // count it per tag if that mismatch confuses.
+    final tag = t.tags.firstOrNull ?? untagged;
+    final top = topLevelTag(tag);
+    if (parent != null && top != parent) continue;
+    final key = parent == null ? top : tag;
+    sums[key] = (sums[key] ?? 0) + amount;
   }
-  final shares = [for (final e in sums.entries) (tag: e.key, amount: e.value)]
+  return [for (final e in sums.entries) (tag: e.key, amount: e.value)]
     ..sort((a, b) => b.amount.abs().compareTo(a.amount.abs()));
-  return (total: total, shares: shares);
 }
 
 String topLevelTag(String tag) => tag.split(DatabaseService.tagSeparator).first;
