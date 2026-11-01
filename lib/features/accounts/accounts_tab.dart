@@ -7,6 +7,8 @@ import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/features/analysis/widgets/balance_chart.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/accounts/account_form.dart';
+import 'package:money_mind/features/accounts/settle.dart';
+import 'package:money_mind/database/models/account_type.dart';
 import 'package:money_mind/features/accounts/transfer_form.dart';
 import 'package:money_mind/features/accounts/widgets/account_tile.dart';
 import 'package:money_mind/features/accounts/widgets/no_accounts_hint.dart';
@@ -121,6 +123,7 @@ class _AccountState extends State<AccountWidget> {
     }
     final accounts = asyncSnapshot.data!;
     if (accounts.isEmpty) return NoAccountsHint(onAdd: _openAccountForm);
+    final open = accounts.where((a) => !a.closed).toList();
     return SlidableAutoCloseBehavior(
       child: ListView(
         children: [
@@ -129,6 +132,13 @@ class _AccountState extends State<AccountWidget> {
             AccountTile(
               account,
               onEdit: () => _openAccountForm(account),
+              // Settled from another open account.
+              onSettle:
+                  account.type == AccountType.creditCard &&
+                      !account.closed &&
+                      open.length >= 2
+                  ? () => settleCard(context, account, open)
+                  : null,
               onClose: () => _closeAccount(account),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
