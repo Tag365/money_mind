@@ -23,7 +23,10 @@ class _TabNavigationState extends State<TabNavigation> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(
-      onResume: DatabaseService.instance.addDueRecurrences,
+      onResume: () {
+        DatabaseService.instance.recheckDates();
+        DatabaseService.instance.addDueRecurrences();
+      },
     );
     DatabaseService.instance.addDueRecurrences();
   }

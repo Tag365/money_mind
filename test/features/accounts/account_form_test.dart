@@ -51,17 +51,12 @@ void main() {
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Initial balance'),
-      '250.5',
+      '250,5',
     );
     await submit(tester);
 
     expect(find.byType(AccountForm), findsNothing);
     await tester.runAsync(() async {
-      // The form does not wait for the initial statement before closing.
-      for (var i = 0; i < 50; i++) {
-        if ((await db.select(db.statements).get()).isNotEmpty) break;
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
       final account = (await db.select(db.accounts).get()).single;
       expect(account.name, 'Giro');
       expect(account.type, AccountType.debit);
@@ -71,6 +66,28 @@ void main() {
       expect(statement.amount, 250.5);
       expect(statement.account, account.id);
     });
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('takes a negative balance, e.g. for a credit card', (
+    tester,
+  ) async {
+    await openForm(tester);
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Account name'),
+      'Visa',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Initial balance'),
+      '-1200,50',
+    );
+    await submit(tester);
+
+    expect(find.byType(AccountForm), findsNothing);
+    final account = await tester.runAsync(
+      () => db.select(db.accounts).getSingle(),
+    );
+    expect(account!.balance, -1200.5);
     await tester.pumpWidget(const SizedBox());
   });
 

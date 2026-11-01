@@ -1,5 +1,7 @@
-final _expression = RegExp(r'^[+-]?\d+(\.\d+)?([+-]\d+(\.\d+)?)*$');
-final _term = RegExp(r'[+-]?\d+(\.\d+)?');
+// A number may leave out the leading 0: ",21" is 0,21.
+const _number = r'(\d+(\.\d+)?|\.\d+)';
+final _expression = RegExp('^[+-]?$_number([+-]$_number)*\$');
+final _term = RegExp('[+-]?$_number');
 
 /// Sum of an amount like "12,50 + 3.2 - 1", or null if it is not valid.
 /// Accepts comma or dot as decimal separator.

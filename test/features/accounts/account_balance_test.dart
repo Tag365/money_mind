@@ -23,4 +23,25 @@ void main() {
     expect((await service.getAccountById(cash)).balance, 200);
     await db.close();
   });
+
+  test('recheckDates reruns the balances once a statement falls due', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final service = DatabaseService.instance..database = db;
+    final cash = await service.addAccount('Cash', AccountType.debit);
+    // Stored in whole seconds, so due within about two.
+    final soon = DateTime.now().add(const Duration(seconds: 1));
+    await service.addStatement('Salary', 1000, cash, soon, soon, [], '');
+
+    final emitted = <double>[];
+    final subscription = service.watchAccounts().listen(
+      (accounts) => emitted.add(accounts.single.balance),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 2100));
+    service.recheckDates();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(emitted, [0, 1000]);
+    await subscription.cancel();
+    await db.close();
+  });
 }
