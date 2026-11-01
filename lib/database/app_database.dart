@@ -10,6 +10,7 @@ import 'package:money_mind/database/migrations/v4.dart';
 import 'package:money_mind/database/migrations/v5.dart';
 import 'package:money_mind/database/migrations/v6.dart';
 import 'package:money_mind/database/migrations/v7.dart';
+import 'package:money_mind/database/migrations/v8.dart';
 
 import 'models/accounts.dart';
 import 'models/statements.dart';
@@ -24,13 +25,15 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      await migrateToV2(this, m); // indexes are not part of the tables
+      // Indexes are not part of the tables.
+      await migrateToV2(this, m);
+      await migrateToV8(this, m);
     },
     // One file per version in migrations/.
     onUpgrade: (m, from, to) async {
@@ -40,6 +43,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) await migrateToV5(this, m);
       if (from < 6) await migrateToV6(this, m);
       if (from < 7) await migrateToV7(this, m);
+      if (from < 8) await migrateToV8(this, m);
     },
   );
 
