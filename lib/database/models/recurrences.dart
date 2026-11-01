@@ -3,14 +3,17 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 
 enum RecurrenceUnit {
-  day("Day"),
-  week("Week"),
-  month("Month"),
-  year("Year");
+  day("Day", 365.25 / 12),
+  week("Week", 365.25 / 7 / 12),
+  month("Month", 1),
+  year("Year", 1 / 12);
 
-  const RecurrenceUnit(this.displayName);
+  const RecurrenceUnit(this.displayName, this.perMonth);
 
   final String displayName;
+
+  /// How many of this unit fall in an average month.
+  final double perMonth;
 
   /// The [n]th date after [start], counted in [every] units. Month and year
   /// steps keep the day of [start] and clamp it to shorter months, so a
