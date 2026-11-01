@@ -37,10 +37,10 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 
 ## Pull requests
 
-Every PR bumps `version` in `pubspec.yaml` (`name+build`, the single source for Android's `versionName`/`versionCode` and the About screen): build number +1 always; minor for features, patch for fixes, e.g. `1.0.0+1` → `1.1.0+2`. Do it in the PR's own branch, in a commit before pushing.
+Every PR bumps `version` in `pubspec.yaml` (Android's `versionName` and the About screen): minor for features, patch for fixes, e.g. `1.0.0` → `1.1.0`. It has no `+build` part; CI sets the build number (`versionCode`) to the run number. Do it in the PR's own branch, in a commit before pushing.
 
 ## CI
 
 `.github/workflows/checks.yml` runs on PRs only: `dart format --set-exit-if-changed lib test` and `flutter analyze --no-fatal-infos`.
 
-`.github/workflows/build-apk.yml` runs `flutter test`, then builds a release APK (Flutter 3.47.9, Java 17) on pushes to `master`, PRs, and manual dispatch, and uploads it as the `money_mind-apk` artifact. Release builds are still signed with debug keys (`android/app/build.gradle.kts`).
+`.github/workflows/build-apk.yml` runs `flutter test`, then builds a release APK (Flutter 3.47.9, Java 17) on pushes to `master`, PRs, and manual dispatch, and uploads it as the `money_mind-apk` artifact. It signs with the keystore from the `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_PASSWORD` and `KEY_ALIAS` secrets, written to `android/key.properties` and read in `android/app/build.gradle.kts` (without that file the debug key is used, so fork PRs still build), with `github.run_number` as the build number. On `master` it publishes the APK as a GitHub Release tagged `v<version>+<run_number>`, for Obtainium.
