@@ -293,6 +293,10 @@ class DatabaseService {
 
   static const transferTag = 'Transfer';
 
+  /// Joins a parent tag and a child tag in the child's name, as in
+  /// "Auto : Laden"; filtering by the parent matches its children too.
+  static const tagSeparator = ' : ';
+
   /// Tag of the statements the app writes itself, like an initial balance.
   static const autoTag = 'Auto-generated';
 
@@ -608,8 +612,10 @@ class DatabaseService {
     // Commas around the joined list make a tag match only whole entries.
     final tagList = const Constant(',') + tbl.tags + const Constant(',');
     final hasTag = Expression.or([
-      for (final tag in filter.tags)
+      for (final tag in filter.tags) ...[
         tagList.like('%,${literal(tag)},%', escapeChar: '\\'),
+        tagList.like('%,${literal(tag + tagSeparator)}%', escapeChar: '\\'),
+      ],
     ]);
     final text = '%${literal(filter.text)}%';
 

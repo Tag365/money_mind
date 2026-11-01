@@ -31,7 +31,7 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 - **Schema** (`lib/database/app_database.dart`): tables `Statements`, `Accounts`, `Tags`, `Recurrences`, `Settings` (key/value, read and written via `features/settings/app_settings.dart`). `schemaVersion` is 7. For a schema change, bump it and add `lib/database/migrations/v<N>.dart` with a `migrateToV<N>` function, called from `onUpgrade`; add columns with `addColumnIfMissing` (`migrations/add_column.dart`), since a cut-short upgrade may run again. Indexes on `payment_date` / `(account, payment_date)` are created via raw SQL in `migrations/v2.dart`, which `onCreate` also runs. The DB file lives in the app support directory.
 - **Invariants**:
   - `Accounts.balance` is denormalized. Change statements only via `addStatement`/`addStatements`/`updateStatement`/`deleteStatement`, which adjust balances in the same transaction with an SQL-side increment (`_addToBalance`). Any new write path for statements must do the same.
-  - `Statements.tags` is a comma-joined string via `ListConverter`, so tags must not contain commas.
+  - `Statements.tags` is a comma-joined string via `ListConverter`, so tags must not contain commas. A child tag is named `Parent : Child` (`DatabaseService.tagSeparator`); filtering by a parent matches its children, and the tag picker nests them.
   - Monthly/yearly totals (`watchTotals`) are aggregated in SQLite and grouped by local time, not UTC.
 - **Statements list** is an accordion of months (`watchTotals`); an expanded month loads its statements via `watchStatementsBetween` and shows them grouped by day (`groupByDay`).
 

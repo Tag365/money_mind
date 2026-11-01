@@ -41,8 +41,8 @@ List<List<String>> parseCsv(String text) {
 }
 
 /// Imports a MoneyWise CSV export: creates its accounts and tags, then adds
-/// every row as a statement. Categories ("Auto : Laden") become one tag per
-/// level. Accounts created here get an "Initial Balance" statement so their
+/// every row as a statement. A category becomes a tag of the same name, a
+/// sub-category ("Auto : Laden") a child tag of its parent. Accounts created here get an "Initial Balance" statement so their
 /// balance ends where MoneyWise's does. Returns the number of rows imported.
 ///
 /// Parses the whole file before writing, so a bad row changes nothing.
@@ -70,13 +70,16 @@ Future<int> importMoneyWise(String csv) async {
   for (final (i, row) in rows.skip(1).indexed) {
     try {
       final day = DateTime.parse(row[date]);
+      final categoryTag = row[category]
+          .split(':')
+          .map((level) => level.trim())
+          .join(DatabaseService.tagSeparator);
       final tagList = {
-        for (final level in row[category].split(':'))
-          switch (level.trim()) {
-            'Uncategorized' || '' => null,
-            'ATransfer' => DatabaseService.transferTag,
-            final name => name,
-          },
+        switch (categoryTag) {
+          'Uncategorized' || '' => null,
+          'ATransfer' => DatabaseService.transferTag,
+          final name => name,
+        },
         for (final tag in row[tags].split(',')) tag.trim(),
       }..removeWhere((t) => t == null || t.isEmpty);
       final title = row[description].trim();
@@ -140,8 +143,14 @@ Future<int> importMoneyWise(String csv) async {
           in await service.database.select(service.database.tags).get())
         t.name,
     };
+    // A sub-category's parent becomes a tag too, so the picker can nest it.
     final newTags = {
-      for (final p in parsed) ...p.statement.tags.value,
+      for (final p in parsed)
+        for (final tag in p.statement.tags.value) ...[
+          tag,
+          if (tag.contains(DatabaseService.tagSeparator))
+            tag.substring(0, tag.indexOf(DatabaseService.tagSeparator)),
+        ],
     }.difference(existingTags);
     for (final tag in newTags) {
       await service.addTag(tag, 0xFF9E9E9E);
