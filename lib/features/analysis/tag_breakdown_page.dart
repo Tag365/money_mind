@@ -159,6 +159,11 @@ class _TagBreakdownPageState extends State<TagBreakdownPage> {
                       for (final (i, s) in shares.indexed)
                         (colorAt(i), s.amount),
                     ]),
+                    if (averages.isEmpty && shares.isNotEmpty)
+                      Text(
+                        "Nothing in the months before to compare with.",
+                        style: text.bodySmall,
+                      ),
                   ],
                 ),
               ),
