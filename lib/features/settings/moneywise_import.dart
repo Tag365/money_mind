@@ -53,8 +53,10 @@ Future<int> importMoneyWise(String csv) async {
   final rows = parseCsv(csv.replaceFirst('﻿', ''));
   if (rows.isEmpty) throw const FormatException('The file is empty.');
   final header = rows.first;
-  int column(String name) {
-    final i = header.indexOf(name);
+  // [alias]: MoneyWise names some columns differently in date-limited exports.
+  int column(String name, [String? alias]) {
+    var i = header.indexOf(name);
+    if (i < 0 && alias != null) i = header.indexOf(alias);
     if (i < 0) {
       throw FormatException('Not a MoneyWise export: no "$name" column.');
     }
@@ -64,7 +66,8 @@ Future<int> importMoneyWise(String csv) async {
   final date = column('Date'), category = column('Category');
   final description = column('Description'), tags = column('Tags');
   final amount = column('Amount in EUR'), account = column('Account');
-  final balance = column('Account balance (EUR)'), note = column('Note');
+  final balance = column('Account balance (EUR)', 'Account balance');
+  final note = column('Note');
   double money(String s) => double.parse(s.replaceAll(',', '.'));
 
   final parsed = <({String account, StatementsCompanion statement})>[];
