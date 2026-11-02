@@ -6,13 +6,19 @@ import 'package:money_mind/features/statements/statement_filter.dart';
 import 'package:money_mind/features/tags/tag_select_dialog.dart';
 import 'package:money_mind/features/tags/widgets/tags_field.dart';
 
-/// Edits a [StatementFilter]. Pops with the new filter, or null when
-/// dismissed.
+/// Edits a [StatementFilter] and passes it to [onChanged] when the sheet
+/// closes, whether by a button, tapping outside, back or dragging it down.
 class StatementFilterSheet extends StatefulWidget {
   final StatementFilter filter;
   final Map<int, String> accountNames;
+  final ValueChanged<StatementFilter> onChanged;
 
-  const StatementFilterSheet(this.filter, this.accountNames, {super.key});
+  const StatementFilterSheet(
+    this.filter,
+    this.accountNames, {
+    required this.onChanged,
+    super.key,
+  });
 
   @override
   State<StatementFilterSheet> createState() => _StatementFilterSheetState();
@@ -49,6 +55,18 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
     );
   }
 
+  StatementFilter get _edited => StatementFilter(
+    accounts: _accounts,
+    tags: _selectedTags,
+    excludeTags: _excludeTags,
+    // Not in the sheet; kept from the page that opened it.
+    childTags: widget.filter.childTags,
+    transfers: widget.filter.transfers,
+    income: _income,
+    expense: _expense,
+    text: _text.text.trim(),
+  );
+
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(top: 16, bottom: 8),
     child: Text(text, style: Theme.of(context).textTheme.titleSmall),
@@ -56,112 +74,106 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        16 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Filter statements',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          _label('Accounts'),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final MapEntry(key: id, value: name)
-                  in widget.accountNames.entries)
-                FilterChip(
-                  label: Text(name),
-                  selected: _accounts.contains(id),
-                  onSelected: (s) => _toggle(_accounts, id, s),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: StreamBuilder(
-                  stream: _tags,
-                  builder: (context, snapshot) {
-                    final tags = snapshot.data ?? <Tag>[];
-                    return TagsField(
-                      tags: tags,
-                      selected: _selectedTags,
-                      onTap: () => _selectTags(tags),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text('Exclude'),
-              Checkbox(
-                value: _excludeTags,
-                onChanged: (v) => setState(() => _excludeTags = v!),
-              ),
-            ],
-          ),
-          _label('Income or expense'),
-          Wrap(
-            spacing: 8,
-            children: [
-              FilterChip(
-                label: const Text('Expense'),
-                selected: _expense,
-                onSelected: (s) => setState(() => _expense = s),
-              ),
-              FilterChip(
-                label: const Text('Income'),
-                selected: _income,
-                onSelected: (s) => setState(() => _income = s),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _text,
-            decoration: const InputDecoration(
-              labelText: 'Search title and note',
-              prefixIcon: Icon(Icons.search),
+    // A pop without a result (Filter, barrier, back, drag) applies the edits;
+    // "No filter" pops with an empty filter.
+    return PopScope<StatementFilter>(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) widget.onChanged(result ?? _edited);
+      },
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Filter statements',
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            spacing: 8,
-            children: [
-              TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, const StatementFilter()),
-                child: const Text('No filter'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(
-                  context,
-                  StatementFilter(
-                    accounts: _accounts,
-                    tags: _selectedTags,
-                    excludeTags: _excludeTags,
-                    // Not in the sheet; kept from the page that opened it.
-                    childTags: widget.filter.childTags,
-                    transfers: widget.filter.transfers,
-                    income: _income,
-                    expense: _expense,
-                    text: _text.text.trim(),
+            _label('Accounts'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final MapEntry(key: id, value: name)
+                    in widget.accountNames.entries)
+                  FilterChip(
+                    label: Text(name),
+                    selected: _accounts.contains(id),
+                    onSelected: (s) => _toggle(_accounts, id, s),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: StreamBuilder(
+                    stream: _tags,
+                    builder: (context, snapshot) {
+                      final tags = snapshot.data ?? <Tag>[];
+                      return TagsField(
+                        tags: tags,
+                        selected: _selectedTags,
+                        onTap: () => _selectTags(tags),
+                      );
+                    },
                   ),
                 ),
-                child: const Text('Filter'),
+                const SizedBox(width: 8),
+                const Text('Exclude'),
+                Checkbox(
+                  value: _excludeTags,
+                  onChanged: (v) => setState(() => _excludeTags = v!),
+                ),
+              ],
+            ),
+            _label('Income or expense'),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilterChip(
+                  label: const Text('Expense'),
+                  selected: _expense,
+                  onSelected: (s) => setState(() => _expense = s),
+                ),
+                FilterChip(
+                  label: const Text('Income'),
+                  selected: _income,
+                  onSelected: (s) => setState(() => _income = s),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _text,
+              decoration: const InputDecoration(
+                labelText: 'Search title and note',
+                prefixIcon: Icon(Icons.search),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(context, const StatementFilter()),
+                  child: const Text('No filter'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Filter'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
