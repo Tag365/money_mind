@@ -39,7 +39,7 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 
 Every PR bumps `version` in `pubspec.yaml` (Android's `versionName` and the About screen): minor for features, patch for fixes, e.g. `1.0.0` → `1.1.0`. It has no `+build` part; CI sets the build number (`versionCode`) to the run number. Do it in the PR's own branch, in a commit before pushing.
 
-After creating a PR, enable auto-merge: `gh pr merge <number> --auto --squash`. The "PR Required Checks" ruleset on `master` holds it until the `build` and `checks` jobs pass.
+Do not enable auto-merge when creating a PR; there may still be work to do. Only once the user says the PR is done, run `gh pr merge <number> --auto --squash` (`.claude/settings.json` makes `gh pr merge` always ask). The "PR Required Checks" ruleset on `master` holds it until the `build` and `checks` jobs pass.
 
 ## CI
 
