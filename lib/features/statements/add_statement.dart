@@ -369,10 +369,17 @@ class _AddWidgetState extends State<AddWidget> {
       appBar: AppBar(
         title: Text(_editing ? 'Edit statement' : 'New statement'),
       ),
-      // Pinned above the keyboard and the tab bar.
+      // Pinned above the keyboard and the tab bar. A Scaffold does not lift
+      // its bottomNavigationBar for the keyboard, which covered it on the
+      // pushed edit page; in the tab the outer Scaffold already took it.
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            16 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Row(
             spacing: 12,
             children: [
