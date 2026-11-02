@@ -37,7 +37,9 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 
 ## Pull requests
 
-Every PR bumps `version` in `pubspec.yaml` (Android's `versionName` and the About screen): minor for features, patch for fixes, e.g. `1.0.0` → `1.1.0`. It has no `+build` part; CI sets the build number (`versionCode`) to the run number. Do it in the PR's own branch, in a commit before pushing.
+Every PR bumps `version` in `pubspec.yaml` (Android's `versionName` and the About screen): minor for features, patch for fixes, e.g. `1.0.0` → `1.1.0`. It has no `+build` part; CI sets the build number (`versionCode`) to the run number. Do it in the PR's own branch, in a commit before pushing, on top of the version of the PR it is based on.
+
+PRs are stacked. Before starting a change, check the open PRs (`gh pr list`) and branch from the newest one at the top of the stack, not from `master`, then open the PR with `--base <that branch>`; only with no open PRs branch from `origin/master`. Squash-merging a PR deletes its branch, and GitHub retargets the next PR to `master`; that PR still holds the old, unsquashed commits, so rebase it with `git rebase --onto origin/master <merged branch's last commit>` and force-push (`--force-with-lease`). Rebase with `--autostash`, as the working tree may hold the user's uncommitted changes.
 
 Do not enable auto-merge when creating a PR; there may still be work to do. Only once the user says the PR is done, run `gh pr merge <number> --auto --squash` (`.claude/settings.json` makes `gh pr merge` always ask). The "PR Required Checks" ruleset on `master` holds it until the `build` and `checks` jobs pass.
 
