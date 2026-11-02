@@ -39,6 +39,8 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
 
 Every PR bumps `version` in `pubspec.yaml` (Android's `versionName` and the About screen): minor for features, patch for fixes, e.g. `1.0.0` → `1.1.0`. It has no `+build` part; CI sets the build number (`versionCode`) to the run number. Do it in the PR's own branch, in a commit before pushing.
 
+After creating a PR, enable auto-merge: `gh pr merge <number> --auto --squash`. The "PR Required Checks" ruleset on `master` holds it until the `build` and `checks` jobs pass.
+
 ## CI
 
 `.github/workflows/checks.yml` runs on PRs only: `dart format --set-exit-if-changed lib test` and `flutter analyze --no-fatal-infos`.
