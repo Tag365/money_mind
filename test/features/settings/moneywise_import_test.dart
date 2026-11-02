@@ -64,6 +64,11 @@ void main() {
     final transferIn = statements.singleWhere((s) => s.amount == 1000);
     expect(ionity.id, lessThan(transferIn.id));
     expect(transferIn.tags, [DatabaseService.transferTag]);
+    final transferOut = statements.singleWhere((s) => s.amount == -1000);
+    expect(transferIn.transfer, transferOut.id);
+    expect(transferOut.transfer, transferIn.id);
+    // Its other side, on Amex, is not in the export.
+    expect(amexBill.transfer, isNull);
   });
 
   test('a bad row imports nothing', () async {

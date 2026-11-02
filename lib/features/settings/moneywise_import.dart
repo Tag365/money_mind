@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
+import 'package:money_mind/database/link_transfers.dart';
 import 'package:money_mind/database/models/account_type.dart';
 import 'package:money_mind/features/tags/widgets/tag_color_picker.dart';
 
@@ -46,7 +47,8 @@ List<List<String>> parseCsv(String text) {
 /// Imports a MoneyWise CSV export: creates its accounts and tags, then adds
 /// every row as a statement. A category becomes a tag of the same name, a
 /// sub-category ("Auto : Laden") a child tag of its parent. Accounts created here get an "Initial Balance" statement so their
-/// balance ends where MoneyWise's does. Returns the number of rows imported.
+/// balance ends where MoneyWise's does, and both sides of a transfer are
+/// linked ([linkTransfers]). Returns the number of rows imported.
 ///
 /// Parses the whole file before writing, so a bad row changes nothing.
 Future<int> importMoneyWise(String csv) async {
@@ -174,6 +176,8 @@ Future<int> importMoneyWise(String csv) async {
       for (final p in parsed.reversed)
         p.statement.copyWith(account: Value(accountIds[p.account]!)),
     ]);
+    // MoneyWise exports both sides of a transfer as unlinked rows.
+    await linkTransfers(service.database);
   });
   return rows.length - 1;
 }
