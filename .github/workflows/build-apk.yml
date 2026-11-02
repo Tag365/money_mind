@@ -6,6 +6,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A new push to a PR makes its running build obsolete. Runs on master publish
+# releases, so each commit gets its own group and none is ever cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
