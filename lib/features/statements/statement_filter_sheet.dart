@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/statements/statement_filter.dart';
+import 'package:money_mind/features/tags/tag_select_dialog.dart';
+import 'package:money_mind/features/tags/widgets/tags_field.dart';
 
 /// Edits a [StatementFilter]. Pops with the new filter, or null when
 /// dismissed.
@@ -33,6 +35,19 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
 
   void _toggle<T>(Set<T> set, T value, bool selected) =>
       setState(() => selected ? set.add(value) : set.remove(value));
+
+  Future<void> _selectTags(List<Tag> tags) async {
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (_) => TagSelectDialog(tags: tags, selected: _selectedTags),
+    );
+    if (result == null) return;
+    setState(
+      () => _selectedTags
+        ..clear()
+        ..addAll(result),
+    );
+  }
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(top: 16, bottom: 8),
@@ -69,30 +84,29 @@ class _StatementFilterSheetState extends State<StatementFilterSheet> {
                 ),
             ],
           ),
+          const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _label('Tags')),
+              Expanded(
+                child: StreamBuilder(
+                  stream: _tags,
+                  builder: (context, snapshot) {
+                    final tags = snapshot.data ?? <Tag>[];
+                    return TagsField(
+                      tags: tags,
+                      selected: _selectedTags,
+                      onTap: () => _selectTags(tags),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
               const Text('Exclude'),
               Checkbox(
                 value: _excludeTags,
                 onChanged: (v) => setState(() => _excludeTags = v!),
               ),
             ],
-          ),
-          StreamBuilder(
-            stream: _tags,
-            builder: (context, snapshot) => Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final tag in snapshot.data ?? <Tag>[])
-                  FilterChip(
-                    label: Text(tag.name),
-                    selected: _selectedTags.contains(tag.name),
-                    onSelected: (s) => _toggle(_selectedTags, tag.name, s),
-                  ),
-              ],
-            ),
           ),
           _label('Income or expense'),
           Wrap(
