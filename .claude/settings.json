@@ -2,9 +2,7 @@
   "permissions": {
     "ask": [
       "Bash(gh pr merge *)",
-      "PowerShell(gh pr merge *)",
-      "Bash(gh stack merge*)",
-      "PowerShell(gh stack merge*)"
+      "PowerShell(gh pr merge *)"
     ]
   }
 }
