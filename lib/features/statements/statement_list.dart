@@ -79,15 +79,13 @@ class _ListState extends State<ListWidget> {
     });
   }
 
-  void _openFilter() async {
-    final filter = await showModalBottomSheet<StatementFilter>(
-      isScrollControlled: true,
-      showDragHandle: true,
-      context: context,
-      builder: (context) => StatementFilterSheet(_filter, _accountNames),
-    );
-    if (filter != null) _setFilter(filter);
-  }
+  void _openFilter() => showModalBottomSheet<StatementFilter>(
+    isScrollControlled: true,
+    showDragHandle: true,
+    context: context,
+    builder: (context) =>
+        StatementFilterSheet(_filter, _accountNames, onChanged: _setFilter),
+  );
 
   Widget _snapshotView<T>(
     AsyncSnapshot<List<T>> asyncSnapshot,
