@@ -12,6 +12,7 @@ import 'package:money_mind/database/migrations/v6.dart';
 import 'package:money_mind/database/migrations/v7.dart';
 import 'package:money_mind/database/migrations/v8.dart';
 import 'package:money_mind/database/migrations/v9.dart';
+import 'package:money_mind/database/migrations/v10.dart';
 
 import 'models/accounts.dart';
 import 'models/statements.dart';
@@ -26,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,6 +47,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7) await migrateToV7(this, m);
       if (from < 8) await migrateToV8(this, m);
       if (from < 9) await migrateToV9(this, m);
+      if (from < 10) await migrateToV10(this, m);
     },
   );
 
