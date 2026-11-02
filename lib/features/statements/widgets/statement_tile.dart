@@ -6,7 +6,8 @@ import 'package:money_mind/features/statements/statement_actions.dart';
 import 'package:money_mind/features/statements/statement_details_sheet.dart';
 
 /// One statement in the list: title, time, account and tags, with the amount
-/// and the account balance after it. Tapping opens the details sheet; a swipe
+/// and the account balance after it, highlighted on the account's newest
+/// statement up to now. Tapping opens the details sheet; a swipe
 /// reveals Edit and Delete.
 ///
 /// Needs a `SlidableAutoCloseBehavior` above it.
@@ -86,12 +87,32 @@ class StatementTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             MoneyText(statement.amount),
-            if (balance != null)
+            if (balance != null && row.current)
+              // The account's balance today, so it can be found at a glance.
+              // Shifted by its padding, so the text lines up with the amount.
+              Container(
+                transform: Matrix4.translationValues(6, 0, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  // primaryContainer barely shows on the glassy card.
+                  color: colors.primary.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  formatMoney(balance),
+                  semanticsLabel: 'Current balance ${formatMoney(balance)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            else if (balance != null)
               Text(
                 formatMoney(balance),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
               ),
           ],
         ),

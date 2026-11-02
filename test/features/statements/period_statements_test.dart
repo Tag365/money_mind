@@ -50,4 +50,37 @@ void main() {
     );
     await db.close();
   });
+
+  test('marks the newest statement up to now per account', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final service = DatabaseService.instance..database = db;
+    final cash = await service.addAccount('Cash', AccountType.values.first);
+    final bank = await service.addAccount('Bank', AccountType.values.first);
+    final now = DateTime.now();
+    Future<void> add(String title, int account, Duration fromNow) {
+      final date = now.add(fromNow);
+      return service.addStatement(title, -1, account, date, date, [], '');
+    }
+
+    await add('cash old', cash, const Duration(days: -2));
+    await add('cash newest', cash, const Duration(days: -1));
+    await add('cash upcoming', cash, const Duration(days: 1));
+    await add('bank same time 1', bank, const Duration(days: -3));
+    await add('bank same time 2', bank, const Duration(days: -3));
+
+    final rows = await service
+        .watchStatementsBetween(DateTime(2000), DateTime(3000))
+        .first;
+    expect(
+      [
+        for (final r in rows)
+          if (r.current) r.statement.title,
+      ],
+      ['cash newest', 'bank same time 2'],
+    );
+    final newest = rows.firstWhere((r) => r.statement.title == 'cash newest');
+    // Today's balance: the upcoming statement is not paid yet.
+    expect(newest.balance, -2);
+    await db.close();
+  });
 }

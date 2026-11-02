@@ -32,7 +32,13 @@ class PeriodTotal {
       month == null ? DateTime(year + 1) : DateTime(year, month! + 1);
 }
 
-typedef StatementWithBalance = ({Statement statement, double? balance});
+/// [current]: the newest statement of its account up to now, so [balance] is
+/// the account's balance today.
+typedef StatementWithBalance = ({
+  Statement statement,
+  double? balance,
+  bool current,
+});
 
 /// A payment after now. [date] is the statement's payment date, or for a
 /// series the date of its next occurrence, which [statement] is the template
@@ -747,16 +753,26 @@ class DatabaseService {
     // Balance after a statement = current balance minus everything the account
     // booked after it. Recent months have few later rows, so this stays cheap
     // (uses the (account, payment_date) index), and it ignores the filter.
+    final isLater =
+        later.account.equalsExp(tbl.account) &
+        (later.paymentDate.isBiggerThan(tbl.paymentDate) |
+            (later.paymentDate.equalsExp(tbl.paymentDate) &
+                later.id.isBiggerThan(tbl.id)));
     final laterSum = subqueryExpression<double>(
       database.selectOnly(later)
         ..addColumns([later.amount.sum()])
-        ..where(
-          later.account.equalsExp(tbl.account) &
-              (later.paymentDate.isBiggerThan(tbl.paymentDate) |
-                  (later.paymentDate.equalsExp(tbl.paymentDate) &
-                      later.id.isBiggerThan(tbl.id))),
-        ),
+        ..where(isLater),
     );
+    // Only rechecked when a table changes, not when a future date passes.
+    final current =
+        tbl.paymentDate.isSmallerOrEqual(currentDateAndTime) &
+        notExistsQuery(
+          database.selectOnly(later)
+            ..addColumns([later.id])
+            ..where(
+              isLater & later.paymentDate.isSmallerOrEqual(currentDateAndTime),
+            ),
+        );
     final balance =
         subqueryExpression<double>(
           database.selectOnly(accounts)
@@ -777,11 +793,15 @@ class DatabaseService {
                 (tbl) => OrderingTerm.desc(tbl.paymentDate),
                 (tbl) => OrderingTerm.desc(tbl.id),
               ]))
-            .addColumns([balance]);
+            .addColumns([balance, current]);
     return query.watch().map(
       (rows) => [
         for (final row in rows)
-          (statement: row.readTable(tbl), balance: row.read(balance)),
+          (
+            statement: row.readTable(tbl),
+            balance: row.read(balance),
+            current: row.read(current)!,
+          ),
       ],
     );
   }

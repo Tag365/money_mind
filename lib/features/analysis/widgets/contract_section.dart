@@ -68,6 +68,7 @@ class ContractSection extends StatelessWidget {
                     builder: (context) => StatementDetailsSheet((
                       statement: c.statement,
                       balance: null,
+                      current: false,
                     ), accountNames[c.statement.account]),
                   ),
                 ),
