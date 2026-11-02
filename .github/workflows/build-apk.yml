@@ -13,7 +13,58 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # A merged PR was built from the same tree that lands on master (the ruleset
+  # keeps PRs up to date), so master publishes that APK instead of rebuilding.
+  promote:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # publish releases
+      actions: read # download the PR's artifact
+    outputs:
+      number: ${{ steps.find.outputs.number }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Find the merged PR's APK
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          tree=$(git rev-parse 'HEAD^{tree}')
+          # Fork PRs are built with the debug key, so only this repo's PRs count.
+          heads=$(gh api "repos/$REPO/commits/$GITHUB_SHA/pulls" \
+            --jq '.[] | select(.merged_at and .head.repo.full_name == env.REPO) | .head.sha')
+          for head in $heads; do
+            [ "$(gh api "repos/$REPO/commits/$head" --jq .commit.tree.sha)" = "$tree" ] || continue
+            run=$(gh run list -R "$REPO" --workflow build-apk.yml --commit "$head" \
+              --event pull_request --status success --limit 1 \
+              --json databaseId,number --jq '.[0] // empty | "\(.databaseId) \(.number)"')
+            [ -n "$run" ] || continue
+            read -r id number <<< "$run"
+            gh run download "$id" -R "$REPO" -n money_mind-apk -D apk || continue
+            echo "Promoting the APK of run $number (PR head $head)"
+            echo "number=$number" >> "$GITHUB_OUTPUT"
+            exit 0
+          done
+          echo "No PR build of this tree; building it instead"
+
+      - name: Publish release
+        if: steps.find.outputs.number
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The APK's build number is the PR run's, so the tag uses it too.
+          tag="v$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)+${{ steps.find.outputs.number }}"
+          cp apk/app-release.apk "money_mind-$tag.apk"
+          gh release create "$tag" "money_mind-$tag.apk" --target "$GITHUB_SHA" --title "$tag" --generate-notes
+
   build:
+    needs: promote
+    # Runs for PRs and manual runs (promote skipped), and on master when no PR
+    # build could be promoted, or promote failed.
+    if: ${{ !cancelled() && !needs.promote.outputs.number }}
     runs-on: ubuntu-latest
     permissions:
       contents: write # publish releases
