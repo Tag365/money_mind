@@ -602,13 +602,9 @@ class DatabaseService {
           await stopRecurrence(r.id);
           continue;
         }
-        final monthAhead = DateTime(
-          now.year,
-          now.month + 1,
-          now.day,
-          now.hour,
-          now.minute,
-        );
+        // Whole days: to the minute, a series started just now got its next
+        // occurrence only when the minute turned before this ran.
+        final monthAhead = DateTime(now.year, now.month + 1, now.day);
         final useOffset = template.useDate.difference(template.paymentDate);
         final due = <StatementsCompanion>[];
         var latest = template.paymentDate;

@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show OrderingTerm;
+import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_mind/database/app_database.dart';
@@ -180,6 +180,34 @@ void main() {
     // Day -10 and -3 are due; +4 is the single upcoming one, +11 is not.
     expect(all, hasLength(3));
     expect(all.where((s) => s.paymentDate.isAfter(now)), hasLength(1));
+    await db.close();
+  });
+
+  test('a series started just now waits a day for its next one', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final service = DatabaseService.instance..database = db;
+    final bank = await service.addAccount('Bank', AccountType.debit);
+    // Saved at the end of a minute, checked at the start of the next.
+    final paid = DateTime(2026, 10, 5, 10, 0, 59);
+    await service.addStatement('Gym', -30, bank, paid, paid, [], '');
+    final id = await db
+        .into(db.recurrences)
+        .insert(
+          RecurrencesCompanion.insert(
+            start: paid,
+            unit: RecurrenceUnit.month,
+            every: 1,
+            generated: 1,
+          ),
+        );
+    await db
+        .update(db.statements)
+        .write(StatementsCompanion(recurrence: Value(id)));
+
+    await service.addDueRecurrences(at: DateTime(2026, 10, 5, 10, 1));
+    expect(await db.select(db.statements).get(), hasLength(1));
+    await service.addDueRecurrences(at: DateTime(2026, 10, 6));
+    expect(await db.select(db.statements).get(), hasLength(2));
     await db.close();
   });
 
