@@ -3,6 +3,11 @@ name: Static checks
 on:
   pull_request:
 
+# A new push to the PR makes the running checks obsolete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     runs-on: ubuntu-latest
