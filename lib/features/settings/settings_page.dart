@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:money_mind/app/app_lock.dart';
 import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/features/settings/app_settings.dart';
 import 'package:money_mind/features/settings/backup.dart';
+import 'package:money_mind/features/settings/csv_export.dart';
 import 'package:money_mind/features/settings/moneywise_import.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -67,13 +69,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _backingUp = false;
 
-  Future<void> _backup() async {
+  Future<void> _save(
+    String extension,
+    Future<Uint8List> Function() export,
+  ) async {
     setState(() => _backingUp = true);
     try {
       final day = DateTime.now().toIso8601String().substring(0, 10);
       await FilePicker.saveFile(
-        fileName: 'money_mind_$day.sqlite',
-        bytes: await exportBackup(),
+        fileName: 'money_mind_$day.$extension',
+        bytes: await export(),
       );
     } finally {
       if (mounted) setState(() => _backingUp = false);
@@ -196,7 +201,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: const Text('Back up'),
                     subtitle: const Text('Save all data to a file'),
                     enabled: !_backingUp,
-                    onTap: _backup,
+                    onTap: () => _save('sqlite', exportBackup),
                   ),
                   ListTile(
                     leading: const Icon(Icons.restore),
@@ -210,6 +215,15 @@ class _SettingsPageState extends State<SettingsPage> {
                           )
                         : null,
                     onTap: _restore,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.table_chart_outlined),
+                    title: const Text('Export as CSV'),
+                    subtitle: const Text(
+                      'Save all statements for a spreadsheet',
+                    ),
+                    enabled: !_backingUp,
+                    onTap: () => _save('csv', exportCsv),
                   ),
                 ],
               ),
