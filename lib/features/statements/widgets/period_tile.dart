@@ -15,6 +15,7 @@ class PeriodTile extends StatelessWidget {
   final Map<int, String> accountNames;
   final StatementFilter filter;
   final bool open;
+  final ValueChanged<BuildContext>? onToday;
 
   const PeriodTile({
     super.key,
@@ -22,6 +23,7 @@ class PeriodTile extends StatelessWidget {
     required this.accountNames,
     required this.filter,
     this.open = false,
+    this.onToday,
   });
 
   @override
@@ -64,6 +66,7 @@ class PeriodTile extends StatelessWidget {
             period,
             accountNames,
             filter,
+            onToday: onToday,
             // A new filter needs a new query.
             key: ValueKey(filter),
           ),

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:money_mind/common/glass_background.dart';
 import 'package:money_mind/database/database_service.dart';
@@ -49,6 +51,9 @@ class _ListState extends State<ListWidget> {
     return totals.map((t) => [...t.where((p) => p.start == month)]);
   }
 
+  static const _currentMonths = ValueKey('currentMonths');
+  double _todayFiller = 0;
+
   Map<int, String> _accountNames = {};
   late final StreamSubscription<List<Account>> _accountsSubscription;
 
@@ -74,6 +79,7 @@ class _ListState extends State<ListWidget> {
 
   void _setFilter(StatementFilter filter) {
     setState(() {
+      _todayFiller = 0;
       _filter = filter;
       _totals = _watchTotals(filter);
     });
@@ -118,6 +124,97 @@ class _ListState extends State<ListWidget> {
     return builder(asyncSnapshot.data!);
   }
 
+  /// Moves [today] to the top, with blank space below a list too short for it.
+  ///
+  /// Retries because the scroll range is an estimate until the months below
+  /// are built, which only happens on the way there.
+  void _scrollToToday(BuildContext today, {int tries = 5}) {
+    if (!mounted || !today.mounted || tries == 0) return;
+    final position = Scrollable.of(today).position;
+    final box = today.findRenderObject()!;
+    final target = RenderAbstractViewport.of(
+      box,
+    ).getOffsetToReveal(box, 0).offset;
+    final missing = target - position.maxScrollExtent;
+    if (missing > 0) {
+      setState(() => _todayFiller += missing);
+    } else if ((position.pixels - target).abs() < 1) {
+      return;
+    } else {
+      position.jumpTo(target);
+    }
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scrollToToday(today, tries: tries - 1),
+    );
+  }
+
+  /// Future months go above the center sliver, so the list opens at the
+  /// current month and scrolling up reaches them.
+  Widget _periods(List<PeriodTotal> totals) {
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    final firstCurrent = totals.indexWhere((p) => !p.start.isAfter(thisMonth));
+    // A header stays on top, and with a month there is nothing to skip.
+    final header = widget.header;
+    final startAtToday = header == null && widget.month == null;
+    final futureCount = !startAtToday
+        ? 0
+        : firstCurrent < 0
+        ? totals.length
+        : firstCurrent;
+
+    Widget tile(PeriodTotal period) => PeriodTile(
+      // Keeps a period open when the totals stream emits again.
+      key: PageStorageKey(period.start),
+      period: period,
+      accountNames: _accountNames,
+      filter: _filter,
+      open: widget.month != null,
+      onToday: startAtToday ? _scrollToToday : null,
+    );
+
+    return CustomScrollView(
+      center: _currentMonths,
+      slivers: [
+        SliverList.builder(
+          itemCount: futureCount,
+          // Above the center, index 0 is the lowest item.
+          itemBuilder: (context, index) =>
+              tile(totals[futureCount - 1 - index]),
+        ),
+        SliverPadding(
+          key: _currentMonths,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          sliver: SliverList.builder(
+            itemCount: totals.length - futureCount + (header == null ? 0 : 1),
+            itemBuilder: (context, index) {
+              if (header != null) {
+                if (index == 0) return header;
+                index--;
+              }
+              return tile(totals[futureCount + index]);
+            },
+          ),
+        ),
+        // Fills a short list to the viewport, so that the filler adds exactly
+        // its height to the scroll range.
+        SliverLayoutBuilder(
+          builder: (context, constraints) => SliverToBoxAdapter(
+            child: SizedBox(
+              height:
+                  math.max(
+                    0,
+                    constraints.viewportMainAxisExtent -
+                        constraints.precedingScrollExtent,
+                  ) +
+                  _todayFiller,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassBackground(
@@ -148,29 +245,8 @@ class _ListState extends State<ListWidget> {
                 stream: _totals,
                 builder: (context, asyncSnapshot) => _snapshotView(
                   asyncSnapshot,
-                  (totals) => SlidableAutoCloseBehavior(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount:
-                          totals.length + (widget.header == null ? 0 : 1),
-                      itemBuilder: (context, index) {
-                        final header = widget.header;
-                        if (header != null) {
-                          if (index == 0) return header;
-                          index--;
-                        }
-                        return PeriodTile(
-                          // Keeps a period open when the totals stream emits
-                          // again.
-                          key: PageStorageKey(totals[index].start),
-                          period: totals[index],
-                          accountNames: _accountNames,
-                          filter: _filter,
-                          open: widget.month != null,
-                        );
-                      },
-                    ),
-                  ),
+                  (totals) =>
+                      SlidableAutoCloseBehavior(child: _periods(totals)),
                 ),
               ),
             ),

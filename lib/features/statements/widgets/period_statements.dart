@@ -11,10 +11,14 @@ class PeriodStatements extends StatefulWidget {
   final Map<int, String> accountNames;
   final StatementFilter filter;
 
+  /// Told once where the newest day up to today is, if days lie ahead of it.
+  final ValueChanged<BuildContext>? onToday;
+
   const PeriodStatements(
     this.period,
     this.accountNames,
     this.filter, {
+    this.onToday,
     super.key,
   });
 
@@ -31,6 +35,27 @@ class _PeriodStatementsState extends State<PeriodStatements> {
         filter: widget.filter,
       );
 
+  final _todayKey = GlobalKey();
+  late ValueChanged<BuildContext>? _onToday = widget.onToday;
+
+  /// The newest day up to today, if days lie ahead of it.
+  DateTime? _todayGroup;
+
+  void _findToday(List<DayGroup> days) {
+    final onToday = _onToday;
+    if (onToday == null) return;
+    _onToday = null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final index = days.indexWhere((d) => !d.day.isAfter(today));
+    if (index < 1) return;
+    _todayGroup = days[index].day;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _todayKey.currentContext;
+      if (context != null) onToday(context);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
@@ -40,10 +65,16 @@ class _PeriodStatementsState extends State<PeriodStatements> {
         if (!snapshot.hasData) return const LinearProgressIndicator();
         // shortcut: builds all rows of the period at once (no lazy list), fine
         // for a month; switch to a flat sliver list if yearly groups get slow.
+        final days = groupByDay(snapshot.data!);
+        _findToday(days);
         return Column(
           children: [
-            for (final day in groupByDay(snapshot.data!))
-              DayGroupView(day, widget.accountNames),
+            for (final day in days)
+              DayGroupView(
+                day,
+                widget.accountNames,
+                key: day.day == _todayGroup ? _todayKey : null,
+              ),
             const SizedBox(height: 8),
           ],
         );
