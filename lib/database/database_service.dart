@@ -225,13 +225,34 @@ class DatabaseService {
     });
   }
 
-  /// Also removes the tag from every statement that uses it.
+  /// Also removes the tag from every statement that uses it. Its sub-tags
+  /// lose the parent ("Old : Child" becomes "Child"), merging into a tag that
+  /// already has that name.
   Future<void> deleteTag(Tag tag) async {
     await database.transaction(() async {
       await (database.delete(
         database.tags,
       )..where((tbl) => tbl.id.equals(tag.id))).go();
       await _replaceTagInStatements(tag.name, null);
+      final prefix = tag.name + tagSeparator;
+      final rest = await database.select(database.tags).get();
+      for (final child in rest) {
+        if (!child.name.startsWith(prefix)) continue;
+        final name = child.name.substring(prefix.length);
+        final twin = rest
+            .where((t) => t.name.toLowerCase() == name.toLowerCase())
+            .firstOrNull;
+        if (twin == null) {
+          await (database.update(database.tags)
+                ..where((tbl) => tbl.id.equals(child.id)))
+              .write(TagsCompanion(name: Value(name)));
+        } else {
+          await (database.delete(
+            database.tags,
+          )..where((tbl) => tbl.id.equals(child.id))).go();
+        }
+        await _replaceTagInStatements(child.name, twin?.name ?? name);
+      }
     });
   }
 
@@ -380,6 +401,12 @@ class DatabaseService {
   /// Joins a parent tag and a child tag in the child's name, as in
   /// "Auto : Laden"; filtering by the parent matches its children too.
   static const tagSeparator = ' : ';
+
+  /// The parent's name in a child tag's name, null for a top-level tag.
+  static String? tagParent(String name) {
+    final i = name.indexOf(tagSeparator);
+    return i > 0 ? name.substring(0, i) : null;
+  }
 
   /// Tag of the statements the app writes itself, like an initial balance.
   static const autoTag = 'Auto-generated';

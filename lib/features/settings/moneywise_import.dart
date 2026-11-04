@@ -151,22 +151,21 @@ Future<int> importMoneyWise(String csv) async {
           in await service.database.select(service.database.tags).get())
         t.name: t.color,
     };
-    String? parentOf(String tag) {
-      final i = tag.indexOf(DatabaseService.tagSeparator);
-      return i < 0 ? null : tag.substring(0, i);
-    }
-
     // A sub-category's parent becomes a tag too, so the picker can nest it.
     final newTags = {
       for (final p in parsed)
-        for (final tag in p.statement.tags.value) ...[tag, ?parentOf(tag)],
+        for (final tag in p.statement.tags.value) ...[
+          tag,
+          ?DatabaseService.tagParent(tag),
+        ],
     }.difference(colors.keys.toSet());
     // New tags get a random palette colour; children take their parent's.
     final random = Random();
-    int colorOf(String tag) => colors[tag] ??= switch (parentOf(tag)) {
-      final parent? => colorOf(parent),
-      null => tagColors[random.nextInt(tagColors.length)].toARGB32(),
-    };
+    int colorOf(String tag) =>
+        colors[tag] ??= switch (DatabaseService.tagParent(tag)) {
+          final parent? => colorOf(parent),
+          null => tagColors[random.nextInt(tagColors.length)].toARGB32(),
+        };
     for (final tag in newTags) {
       await service.addTag(tag, colorOf(tag));
     }
