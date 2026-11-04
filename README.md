@@ -2,20 +2,12 @@
 
 A personal finance tracker for Android. Record your accounts and statements and see where your money goes. Everything stays in a local database on your device, with no account or server.
 
-<table>
-  <tr>
-    <th>Home</th>
-    <th>Create</th>
-    <th>Statements</th>
-    <th>Accounts</th>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/home.png" alt="Home tab with the total balance, the month's expenses by tag, income, net and upcoming payments"></td>
-    <td><img src="docs/screenshots/create.png" alt="New statement form with a summed amount and a title suggestion"></td>
-    <td><img src="docs/screenshots/statements.png" alt="Statement list of a month, grouped by day"></td>
-    <td><img src="docs/screenshots/accounts.png" alt="Accounts tab with a chart of the balance at each month's end and the list of accounts"></td>
-  </tr>
-</table>
+<p>
+  <img width="190" src="docs/screenshots/home.png" alt="Home tab with the total balance, the month's expenses by tag, income, net and upcoming payments">
+  <img width="190" src="docs/screenshots/create.png" alt="New statement form with a summed amount and a title suggestion">
+  <img width="190" src="docs/screenshots/statements.png" alt="Statement list of a month, grouped by day">
+  <img width="190" src="docs/screenshots/accounts.png" alt="Accounts tab with a chart of the balance at each month's end and the list of accounts">
+</p>
 
 <sub>The screenshots show invented example data.</sub>
 
