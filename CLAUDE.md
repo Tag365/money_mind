@@ -87,10 +87,10 @@ The repo is public and the emulator holds the user's data, so never publish emul
    git worktree remove <scratchpad>/pr-shots
    ```
 
-3. Add them to the description with `gh pr edit`, at a fixed width so they line up:
+3. Add them to the description with `gh pr edit`, at a fixed width so they line up. Link the pushed commit (`git rev-parse pr-screenshots`), not the branch: the branch URL can serve a cached 404, or an old image after a replacement:
 
    ```html
-   <img src="https://raw.githubusercontent.com/Tag365/money_mind/pr-screenshots/<pr number>/<name>.png" width="240" alt="...">
+   <img src="https://raw.githubusercontent.com/Tag365/money_mind/<commit sha>/<pr number>/<name>.png" width="240" alt="...">
    ```
 
 The PR number exists only after `gh stack submit`, so this comes after it. `gh stack submit` can rewrite the description, so check that the images are still there at the end.
