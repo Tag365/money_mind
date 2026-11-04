@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:money_mind/features/tags/tag_dialog.dart';
+import 'package:money_mind/features/tags/tag_tree.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 
@@ -16,11 +17,12 @@ class _ManageTagsSheetState extends State<ManageTagsSheet> {
   late final Stream<List<Tag>> _tags = databaseService.watchTags();
   List<Tag> tags = [];
 
-  /// Add dialog when [tag] is null, edit dialog otherwise.
-  Future<void> _edit(Tag? tag) async {
+  /// Add dialog when [tag] is null, edit dialog otherwise. [parent] is the
+  /// tag a new one goes under.
+  Future<void> _edit(Tag? tag, {String? parent}) async {
     final result = await showDialog<(String, Color)>(
       context: context,
-      builder: (_) => TagDialog(tag: tag, tags: tags),
+      builder: (_) => TagDialog(tag: tag, tags: tags, parent: parent),
     );
     if (result == null) return;
     final (name, color) = result;
@@ -31,12 +33,17 @@ class _ManageTagsSheetState extends State<ManageTagsSheet> {
     }
   }
 
-  Future<void> _delete(Tag tag) async {
+  Future<void> _delete(Tag tag, {required bool hasChildren}) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Delete "${tag.name}"?'),
-        content: const Text('The tag is removed from all statements.'),
+        content: Text(
+          hasChildren
+              ? 'The tag is removed from all statements. Its sub-tags stay as '
+                    'top-level tags.'
+              : 'The tag is removed from all statements.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -50,6 +57,40 @@ class _ManageTagsSheetState extends State<ManageTagsSheet> {
       ),
     );
     if (confirmed == true) await databaseService.deleteTag(tag);
+  }
+
+  Widget _tile(
+    Tag tag,
+    String label, {
+    List<Tag>? children,
+    bool indent = false,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsetsDirectional.only(
+        start: indent ? 48 : 16,
+        end: 24,
+      ),
+      leading: Icon(Icons.label, color: Color(tag.color)),
+      title: Text(label),
+      onTap: () => _edit(tag),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Only one level nests.
+          if (DatabaseService.tagParent(tag.name) == null)
+            IconButton(
+              tooltip: 'Add sub-tag',
+              icon: const Icon(Icons.add),
+              onPressed: () => _edit(null, parent: tag.name),
+            ),
+          IconButton(
+            tooltip: 'Delete',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _delete(tag, hasChildren: children != null),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -88,21 +129,22 @@ class _ManageTagsSheetState extends State<ManageTagsSheet> {
                   child: Text('No tags yet.'),
                 );
               }
+              final tree = tagTree(tags);
               return ListView(
                 shrinkWrap: true,
                 padding: const EdgeInsets.only(bottom: 16),
                 children: [
-                  for (final tag in tags)
-                    ListTile(
-                      leading: Icon(Icons.label, color: Color(tag.color)),
-                      title: Text(tag.name),
-                      onTap: () => _edit(tag),
-                      trailing: IconButton(
-                        tooltip: 'Delete',
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _delete(tag),
+                  for (final tag in tree.roots) ...[
+                    _tile(tag, tag.name, children: tree.children[tag.name]),
+                    for (final child in tree.children[tag.name] ?? <Tag>[])
+                      _tile(
+                        child,
+                        child.name.substring(
+                          tag.name.length + DatabaseService.tagSeparator.length,
+                        ),
+                        indent: true,
                       ),
-                    ),
+                  ],
                 ],
               );
             },

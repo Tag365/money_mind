@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:money_mind/database/app_database.dart';
 import 'package:money_mind/database/database_service.dart';
 import 'package:money_mind/features/tags/manage_tags.dart';
+import 'package:money_mind/features/tags/tag_tree.dart';
 import 'package:money_mind/features/tags/widgets/tag_label.dart';
 
 /// Checkbox list of [tags]. Pops with the selected names, or null when
@@ -25,24 +26,10 @@ class _TagSelectDialogState extends State<TagSelectDialog> {
 
   static const _sep = DatabaseService.tagSeparator;
 
-  /// Children ("Auto : Laden") by the name of their parent tag; a child whose
-  /// parent tag doesn't exist is shown as a root with its full name.
-  late final Map<String, List<Tag>> _children = () {
-    final names = {for (final tag in widget.tags) tag.name};
-    final children = <String, List<Tag>>{};
-    for (final tag in widget.tags) {
-      final i = tag.name.indexOf(_sep);
-      if (i > 0 && names.contains(tag.name.substring(0, i))) {
-        children.putIfAbsent(tag.name.substring(0, i), () => []).add(tag);
-      }
-    }
-    return children;
-  }();
-
-  late final List<Tag> _roots = [
-    for (final tag in widget.tags)
-      if (!_children.values.any((c) => c.contains(tag))) tag,
-  ];
+  // A child whose parent tag doesn't exist is shown with its full name.
+  late final _tree = tagTree(widget.tags);
+  late final _children = _tree.children;
+  late final _roots = _tree.roots;
 
   // Parents start folded, unless one of their children is selected.
   late final Set<String> _expanded = {
