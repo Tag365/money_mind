@@ -41,6 +41,60 @@ Every PR bumps `version` in `pubspec.yaml` (Android's `versionName` and the Abou
 
 PRs are stacked with GitHub stacked PRs (`gh stack`, the `github/gh-stack` extension). Before starting a change, check the open PRs (`gh pr list`, `gh stack view`): with an open stack, `gh stack top`, then `gh stack add <branch>` for the new change, commit, and `gh stack submit --auto --open`; with none, `gh stack init <branch>` from an up-to-date `master`. After a PR of the stack merges or `master` moves, `gh stack sync` rebases the rest and force-pushes it. `gh stack merge` merges the stack bottom-up in one go, only when the user says so (like `gh pr merge`, it always asks). The working tree may hold the user's uncommitted changes; leave them out of commits.
 
+### Screenshots
+
+A PR with a visible change (feature or bug fix) shows it in its description, under `## Screenshots`, noting that the data is invented. A bug fix shows before and after, running the same test on the base branch too. Skip it for changes with nothing to see.
+
+The repo is public and the emulator holds the user's data, so never publish emulator screenshots. Render them from invented data instead:
+
+1. Write a temporary widget test, `test/pr_screenshots_test.dart`, that seeds an in-memory database with invented data, pumps `MoneyMind`, navigates to the change and captures each state. Do not commit it. Read every PNG to check it before publishing.
+
+   ```dart
+   // Tests render the Ahem font unless the real ones are loaded, before pumping.
+   // They are in <flutter root>/bin/cache/artifacts/material_fonts.
+   Future<void> font(String family, List<String> files) async {
+     final loader = FontLoader(family);
+     for (final f in files) {
+       final bytes = await File('$fonts/$f').readAsBytes();
+       loader.addFont(Future.value(ByteData.sublistView(bytes)));
+     }
+     await loader.load();
+   }
+   // In tester.runAsync: font('Roboto', ['roboto-regular.ttf', 'roboto-medium.ttf',
+   // 'roboto-bold.ttf', 'roboto-light.ttf']), font('MaterialIcons',
+   // ['materialicons-regular.otf']), setThemeMode(ThemeMode.dark).
+   // Set debugDisableShadows = false (back to true before the test ends),
+   // tester.view.physicalSize = const Size(720, 1616), devicePixelRatio = 1.75.
+
+   Future<void> shot(String name) async {
+     final layer = tester.binding.renderView.debugLayer! as OffsetLayer;
+     await tester.runAsync(() async {
+       final image = await layer.toImage(tester.binding.renderView.paintBounds);
+       final png = await image.toByteData(format: ui.ImageByteFormat.png);
+       await File('$out/$name.png').writeAsBytes(png!.buffer.asUint8List());
+     });
+   }
+   ```
+
+   Before each `shot`, alternate `tester.runAsync(() => Future<void>.delayed(...))` with `tester.pump(...)` a few times, so database streams and animations settle. Save the PNGs to the scratchpad.
+
+2. Publish to the `pr-screenshots` branch, which has only images and never merges, so they stay out of `master` and its history:
+
+   ```sh
+   git fetch origin pr-screenshots:pr-screenshots
+   git worktree add <scratchpad>/pr-shots pr-screenshots
+   # copy the PNGs to <scratchpad>/pr-shots/<pr number>/, then commit and push from there
+   git worktree remove <scratchpad>/pr-shots
+   ```
+
+3. Add them to the description with `gh pr edit`, at a fixed width so they line up:
+
+   ```html
+   <img src="https://raw.githubusercontent.com/Tag365/money_mind/pr-screenshots/<pr number>/<name>.png" width="240" alt="...">
+   ```
+
+The PR number exists only after `gh stack submit`, so this comes after it. `gh stack submit` can rewrite the description, so check that the images are still there at the end.
+
 Do not enable auto-merge when creating a PR; there may still be work to do. Only once the user says the PR is done, run `gh pr merge <number> --auto --squash` (`.claude/settings.json` makes `gh pr merge` always ask). The "PR Required Checks" ruleset on `master` holds it until the `build` and `checks` jobs pass.
 
 ## CI
