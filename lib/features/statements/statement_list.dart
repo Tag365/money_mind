@@ -124,7 +124,8 @@ class _ListState extends State<ListWidget> {
     return builder(asyncSnapshot.data!);
   }
 
-  /// Moves [today] to the top, with blank space below a list too short for it.
+  /// Moves [today] to the middle, or as far as the days above it allow, with
+  /// blank space below a list too short for it.
   ///
   /// Retries because the scroll range is an estimate until the months below
   /// are built, which only happens on the way there.
@@ -132,9 +133,11 @@ class _ListState extends State<ListWidget> {
     if (!mounted || !today.mounted || tries == 0) return;
     final position = Scrollable.of(today).position;
     final box = today.findRenderObject()!;
-    final target = RenderAbstractViewport.of(
-      box,
-    ).getOffsetToReveal(box, 0).offset;
+    final target = math.max(
+      position.minScrollExtent,
+      RenderAbstractViewport.of(box).getOffsetToReveal(box, 0).offset -
+          position.viewportDimension / 2,
+    );
     final missing = target - position.maxScrollExtent;
     if (missing > 0) {
       setState(() => _todayFiller += missing);

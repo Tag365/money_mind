@@ -33,7 +33,7 @@ Widget tests swap in an in-memory database: `DatabaseService.instance.database =
   - `Accounts.balance` is denormalized. Change statements only via `addStatement`/`addStatements`/`updateStatement`/`deleteStatement`, which adjust balances in the same transaction with an SQL-side increment (`_addToBalance`). Any new write path for statements must do the same.
   - `Statements.tags` is a comma-joined string via `ListConverter`, so tags must not contain commas. A child tag is named `Parent : Child` (`DatabaseService.tagSeparator`), one level deep; the tag dialog builds that name from a parent dropdown, so users never type the separator. Filtering by a parent matches its children, the tag picker and Manage tags nest them, and deleting a parent makes its children top-level.
   - Monthly/yearly totals (`watchTotals`) are aggregated in SQLite and grouped by local time, not UTC.
-- **Statements list** is an accordion of months (`watchTotals`); an expanded month loads its statements via `watchStatementsBetween` and shows them grouped by day (`groupByDay`). Without a `month` or `header`, it opens at today: future months sit above the center sliver of its `CustomScrollView`, and it scrolls past the current month's future days once they load.
+- **Statements list** is an accordion of months (`watchTotals`); an expanded month loads its statements via `watchStatementsBetween` and shows them grouped by day (`groupByDay`). Without a `month` or `header`, it opens at today: future months sit above the center sliver of its `CustomScrollView`, and it scrolls today's date to mid-screen once the current month's days load.
 
 ## Pull requests
 
