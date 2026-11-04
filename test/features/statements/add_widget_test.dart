@@ -222,6 +222,27 @@ void main() {
     await closeForm(tester);
   });
 
+  testWidgets('a tap outside closes the title suggestions', (tester) async {
+    await openForm(
+      tester,
+      seed: () async {
+        final date = DateTime(2026, 9, 1);
+        await service.addStatement('Salary', 2000, accountId, date, date, [
+          'Travel',
+        ], '');
+      },
+    );
+    await tester.enterText(find.widgetWithText(TextFormField, 'Title'), 'sal');
+    await tester.pumpAndSettle();
+    expect(find.text('Salary'), findsOneWidget);
+
+    await tester.tap(find.text('New statement'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Salary'), findsNothing);
+    await closeForm(tester);
+  });
+
   testWidgets('a repeat picked when creating starts a series', (tester) async {
     await openForm(tester);
     await enterStatement(tester);

@@ -277,6 +277,8 @@ class _AddWidgetState extends State<AddWidget> {
             controller: controller,
             focusNode: focusNode,
             onFieldSubmitted: (_) => onSubmitted(),
+            // The suggestions stay open as long as the field has focus.
+            onTapOutside: (_) => focusNode.unfocus(),
             style: Theme.of(context).textTheme.titleMedium,
             decoration: const InputDecoration(
               labelText: 'Title',
