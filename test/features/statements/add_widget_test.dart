@@ -177,6 +177,42 @@ void main() {
     await closeForm(tester);
   });
 
+  testWidgets('a statement of 0 can be edited, but not a new one saved', (
+    tester,
+  ) async {
+    final statement = (await tester.runAsync(() async {
+      accountId = await service.addAccount('Giro', AccountType.debit);
+      final date = DateTime(2026, 9, 15, 12, 30);
+      await service.addStatement('Initial Balance', 0, accountId, date, date, [
+        DatabaseService.autoTag,
+      ], '');
+      return (await db.select(db.statements).get()).single;
+    }))!;
+    await tester.pumpWidget(MaterialApp(home: AddWidget(statement: statement)));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Title'),
+      'Opening',
+    );
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Please enter a positive amount'), findsNothing);
+    expect((await statements(tester)).single.title, 'Opening');
+
+    // Saving popped the only route, so the next form needs a new navigator.
+    await closeForm(tester);
+    await tester.pumpWidget(const MaterialApp(home: AddWidget()));
+    await tester.pumpAndSettle();
+    await enterStatement(tester, amount: '0');
+    await save(tester);
+
+    expect(find.text('Please enter a positive amount'), findsOneWidget);
+    expect(await statements(tester), hasLength(1));
+    await closeForm(tester);
+  });
+
   testWidgets('cancel asks before discarding changes', (tester) async {
     await openEditForm(tester);
     await enterStatement(tester, title: 'Dinner');
