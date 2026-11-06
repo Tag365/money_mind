@@ -16,12 +16,16 @@ class AmountField extends StatelessWidget {
   /// Called by the keyboard's Next key.
   final VoidCallback? onNext;
 
+  /// Also accepts 0, for a statement that already has that amount.
+  final bool allowZero;
+
   const AmountField({
     super.key,
     required this.controller,
     required this.color,
     this.trailing,
     this.onNext,
+    this.allowZero = false,
   });
 
   /// "= 19,70 €" while [text] holds more than one charge, else null.
@@ -62,7 +66,7 @@ class AmountField extends StatelessWidget {
           ),
           validator: (value) {
             final amount = evaluateAmount(value ?? '');
-            if (amount == null || amount <= 0) {
+            if (amount == null || amount < 0 || (amount == 0 && !allowZero)) {
               return 'Please enter a positive amount';
             }
             return null;

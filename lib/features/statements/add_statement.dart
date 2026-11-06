@@ -421,6 +421,8 @@ class _AddWidgetState extends State<AddWidget> {
                   controller: amountController,
                   onNext: _titleFocus.requestFocus,
                   color: color,
+                  // An account opened with no balance has such a statement.
+                  allowZero: widget.statement?.amount == 0,
                   trailing: FilledButton.tonal(
                     style: FilledButton.styleFrom(
                       // Same width for both labels.

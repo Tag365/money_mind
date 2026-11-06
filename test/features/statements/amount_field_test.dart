@@ -9,16 +9,21 @@ void main() {
   setUp(() => controller = TextEditingController());
   tearDown(() => controller.dispose());
 
-  Future<void> show(WidgetTester tester) => tester.pumpWidget(
-    MaterialApp(
-      home: Scaffold(
-        body: Form(
-          key: formKey,
-          child: AmountField(controller: controller, color: Colors.red),
+  Future<void> show(WidgetTester tester, {bool allowZero = false}) =>
+      tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Form(
+              key: formKey,
+              child: AmountField(
+                controller: controller,
+                color: Colors.red,
+                allowZero: allowZero,
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Future<void> type(WidgetTester tester, String text) async {
     await tester.enterText(find.byType(TextFormField), text);
@@ -50,5 +55,16 @@ void main() {
     }
     await type(tester, '0,01');
     expect(formKey.currentState!.validate(), isTrue);
+  });
+
+  testWidgets('allowZero accepts 0 but still no negative amount', (
+    tester,
+  ) async {
+    await show(tester, allowZero: true);
+
+    await type(tester, '0,00');
+    expect(formKey.currentState!.validate(), isTrue);
+    await type(tester, '3 - 5');
+    expect(formKey.currentState!.validate(), isFalse);
   });
 }
