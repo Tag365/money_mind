@@ -56,8 +56,8 @@ class _AddWidgetState extends State<AddWidget> {
 
   DateTime date = DateTime.now();
 
-  /// Set when the date was picked, so it is kept for the next statement
-  /// instead of following the clock.
+  /// Set when the date was picked, so it does not follow the clock until
+  /// the statement is saved.
   bool _datePicked = false;
   int? accountId;
   bool expense = true;
@@ -139,16 +139,14 @@ class _AddWidgetState extends State<AddWidget> {
     if (discard && mounted) Navigator.pop(context, false);
   }
 
-  /// Empties the form; a picked date stays when [keepDate] is set.
-  void _clear({bool keepDate = false}) {
+  /// Empties the form, with the date back at now.
+  void _clear() {
     titleController.clear();
     amountController.clear();
     noteController.clear();
     setState(() {
-      if (!keepDate || !_datePicked) {
-        date = DateTime.now();
-        _datePicked = false;
-      }
+      date = DateTime.now();
+      _datePicked = false;
       expense = true;
       selectedTags.clear();
       _repeat = null;
@@ -214,7 +212,7 @@ class _AddWidgetState extends State<AddWidget> {
       Navigator.pop(context, true);
       return;
     }
-    _clear(keepDate: true);
+    _clear();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Statement saved')));
