@@ -299,7 +299,7 @@ void main() {
     await closeForm(tester);
   });
 
-  testWidgets('a picked date stays for the next statement', (tester) async {
+  testWidgets('the date is back at now for the next statement', (tester) async {
     await openForm(tester);
     final day = DateTime.now().day == 15 ? 16 : 15;
     await tester.tap(find.byType(DateButton));
@@ -314,8 +314,8 @@ void main() {
     await save(tester);
 
     final saved = await statements(tester);
-    expect(saved.map((s) => s.paymentDate.day), [day, day]);
-    expect(saved.last.paymentDate, saved.first.paymentDate);
+    expect(saved.first.paymentDate.day, day);
+    expect(saved.last.paymentDate.day, DateTime.now().day);
     await closeForm(tester);
   });
 
